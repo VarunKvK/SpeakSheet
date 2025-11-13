@@ -2,7 +2,6 @@
 import React, { useState } from "react";
 import { Button } from "./ui/button";
 import { Sparkles, Loader2 } from "lucide-react";
-import { uploadToSupabase } from "@/lib/uploadToSupabase";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
@@ -11,11 +10,11 @@ const GenerateButton = ({
   setSchema,
   schema,
   className = "",
-  file,
-  user
+  fileUrl,
+  user,
+  setUploading, // optional, only if parent provides
 }) => {
   const [loading, setLoading] = useState(false);
-  const [fileUrl, setFileUrl] = useState();
   const router = useRouter();
 
   const handleClick = async () => {
@@ -24,38 +23,52 @@ const GenerateButton = ({
       router.push("/auth/login");
       return;
     }
-    console.log(user)
 
     if (!prompt.trim()) return;
 
     setLoading(true);
     try {
-      if (file) {
-        const { publicUrl } = await uploadToSupabase(file);
-        setFileUrl(publicUrl);
-        toast("File uploaded successfully!");
-      }
-
+      // 1. Generate schema
       const response = await fetch("/api/schema", {
         method: "POST",
         body: JSON.stringify({ prompt }),
         headers: { "Content-Type": "application/json" },
       });
 
+      if (!response.ok) throw new Error("Schema API failed");
       const { schema } = await response.json();
       setSchema(schema);
-      toast("Schema Generated successfully!");
+      if (schema) toast("Schema Generated successfully!");
 
-      await fetch("/api/save-sheet", {
+      // 2. Save sheet metadata
+      const sheetResponse = await fetch("/api/save-sheet", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, fileUrl, schema }),
+        body: JSON.stringify({ userId: user.id, prompt, fileUrl, schema }),
       });
+
+      const data = await sheetResponse.json();
+      if (data) toast("Data saved successfully!");
+
+      // 3. Build Excel only if schema is valid
+      if (schema && Array.isArray(schema)) {
+        const excelResponse = await fetch("/api/build-excel", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ schema: data.data[0].schema, prompt: data.data[0].prompt, user_id: user.id }),
+        });
+
+        const excelData = await excelResponse.json();
+        if (!excelResponse.ok) throw new Error(excelData.error || "Failed to build Excel");
+
+        console.log(excelData);
+      }
     } catch (error) {
       console.error("Schema generation failed:", error);
       toast("Schema generation failed");
     } finally {
       setLoading(false);
+      if (setUploading) setUploading(false); // only call if provided
     }
   };
 

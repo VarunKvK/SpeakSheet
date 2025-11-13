@@ -36,6 +36,7 @@ const Dashboard = () => {
     const [file, setFile] = useState()
     const [schema, setSchema] = useState(null);
     const [user, setUser] = useState()
+    const [uploading, setUploading] = useState(false);
 
     useEffect(() => {
         const fetchUser = async () => {
@@ -73,6 +74,9 @@ const Dashboard = () => {
                             maxLength={500}
                             setFile={setFile}
                             file={file}
+                            uploading={uploading}
+                            setUploading={setUploading}
+                            user={user}
                         />
 
                         {/* Generate Button */}
@@ -81,7 +85,7 @@ const Dashboard = () => {
                                 prompt={prompt}
                                 setSchema={setSchema}
                                 schema={schema}
-                                file={file}
+                                fileUrl={file}
                                 user={user}
                             />
                         </div>

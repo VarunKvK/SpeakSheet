@@ -5,6 +5,7 @@ import { FileSpreadsheet, AlertCircle, Upload, X, FileCheck, Paperclip } from "l
 import { useState, useRef } from "react";
 import { Button } from "./ui/button";
 import { toast } from "sonner";
+import { uploadToSupabase } from "@/lib/uploadToSupabase";
 
 
 /**
@@ -39,11 +40,13 @@ const PromptInput = ({
   error,
   className = "",
   setFile,
-  file
+  file,
+  uploading,
+  setUploading,
+  user
 }) => {
   const [isFocused, setIsFocused] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
-  const [uploading, setUploading] = useState(false);
 
   const fileInputRef = useRef(null);
 
@@ -101,12 +104,27 @@ const PromptInput = ({
   /**
    * Handles file selection
    */
-  const handleFileSelect = (selectedFile) => {
+  const handleFileSelect = async (selectedFile) => {
     if (!selectedFile) return;
-
+    console.log
     if (validateFile(selectedFile)) {
       setFile(selectedFile);
       toast.success(`File "${selectedFile.name}" selected`);
+
+      try {
+        setUploading(true);
+
+        // Use selectedFile directly, not file state
+        const { publicUrl } = await uploadToSupabase(selectedFile, user.id);
+
+        setFile(publicUrl);
+        toast.success("File uploaded successfully!");
+      } catch (error) {
+        console.error("File upload failed:", error);
+        toast.error("File upload failed");
+      } finally {
+        setUploading(false);
+      }
     }
   };
 
@@ -310,26 +328,20 @@ const PromptInput = ({
             </div>
 
             <div className="flex items-center gap-2">
-              {/* <Button
-                type="button"
-                onClick={handleUpload}
-                disabled={uploading}
-                size="sm"
-                className="h-8 text-xs"
-              >
-                {uploading ? (
-                  <>
-                    <div className="mr-1.5 h-3 w-3 animate-spin rounded-full border-2 border-background border-t-transparent" />
-                    Uploading...
-                  </>
-                ) : (
-                  <>
-                    <Upload className="mr-1.5 h-3 w-3" />
-                    Upload
-                  </>
-                )}
-              </Button> */}
+              {/* Upload status label */}
+              {uploading ? (
+                <span className="flex items-center text-xs text-muted-foreground">
+                  <div className="mr-1.5 h-3 w-3 animate-spin rounded-full border-2 border-background border-t-transparent" />
+                  Uploading...
+                </span>
+              ) : file ? (
+                <span className="flex items-center text-xs text-green-600">
+                  <Upload className="mr-1.5 h-3 w-3" />
+                  Uploaded successfully
+                </span>
+              ) : null}
 
+              {/* Remove file button */}
               <Button
                 type="button"
                 variant="ghost"

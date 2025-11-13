@@ -1,11 +1,12 @@
 import { supabase } from "./supabaseClient";
 import { v4 as uuidv4 } from "uuid";
-export async function uploadToSupabase(file) {
-  if (!file) throw new Error("File or user ID missing");
+
+export async function uploadToSupabase(file, user_id, customName) {
+  if (!file || !user_id) throw new Error("File or user ID missing");
 
   const ext = file.name.split(".").pop();
-  const filename = `${uuidv4()}.${ext}`;
-  const filepath = `${uuidv4()}/${filename}`;
+  const filename = customName || `${uuidv4()}.${ext}`;
+  const filepath = `${user_id}/${filename}`;
 
   // Upload file to 'sheets' bucket
   const { error } = await supabase.storage
