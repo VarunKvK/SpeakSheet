@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/card";
 import { SchemaPreview } from "@/components/SchemaPreview";
 import { supabase } from "@/lib/supabaseClient";
+import Link from "next/link";
 
 
 /**
@@ -37,6 +38,7 @@ const Dashboard = () => {
     const [schema, setSchema] = useState(null);
     const [user, setUser] = useState()
     const [uploading, setUploading] = useState(false);
+    const [excelUrl, setExcelUrl] = useState();
 
     useEffect(() => {
         const fetchUser = async () => {
@@ -87,9 +89,13 @@ const Dashboard = () => {
                                 schema={schema}
                                 fileUrl={file}
                                 user={user}
+                                setExcelUrl={setExcelUrl}
                             />
                         </div>
-
+                        {excelUrl &&
+                            <Link href={excelUrl}>
+                                Download Link
+                            </Link>}
                         {/* Schema Preview (if generated) */}
                         {schema && <SchemaPreview schema={schema} />}
                     </CardContent>
