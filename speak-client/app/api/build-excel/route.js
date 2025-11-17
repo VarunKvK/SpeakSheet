@@ -1,12 +1,11 @@
 import { supabase } from "@/lib/supabaseClient";
-import { uploadToSupabase } from "@/lib/uploadToSupabase";
-import ExcelJS from "exceljs";
 import { v4 as uuidv4 } from "uuid";
+import ExcelJS from "exceljs";
 
+// API Route (Next.js App Router)
 export async function POST(req) {
-  //? Incase Files System is implemented add here
-  //? Incase Files System is implemented add here
-  const { schema, userId } = await req.json();
+  const { schema, userId, file_read_data } = await req.json();
+
   if (!userId || !schema?.length) {
     return Response.json(
       { error: "Missing schema or user ID" },
@@ -17,8 +16,9 @@ export async function POST(req) {
   try {
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet("Sheet");
-    let parsedSchema = schema;
 
+    // Parse schema if it's a string
+    let parsedSchema = schema;
     if (typeof schema === "string") {
       try {
         parsedSchema = JSON.parse(schema);
@@ -37,16 +37,18 @@ export async function POST(req) {
       );
     }
 
+    // Define headers from schema
     const headers = parsedSchema.map((col) => ({
       header: col.columnName,
-      key: col.columnName.toLowerCase(),
+      key: col.columnName,
       width: 25,
     }));
 
     sheet.columns = headers;
 
-    parsedSchema.map((col, index) => {
-      if (col.type === "dropdown" && col.options?.length) {
+    // Add dropdown validations if defined
+    parsedSchema.forEach((col, index) => {
+      if (col.type === "dropdown" && Array.isArray(col.options)) {
         sheet.getColumn(index + 1).eachCell((cell) => {
           cell.dataValidation = {
             type: "list",
@@ -57,7 +59,24 @@ export async function POST(req) {
       }
     });
 
+    // ✅ Add rows from uploaded file if exists
+    if (Array.isArray(file_read_data)) {
+      file_read_data.forEach((row) => {
+        const rowValues = {};
+
+        parsedSchema.forEach((col) => {
+          const key = col.columnName;
+          rowValues[key] = row[key] ?? "";
+        });
+
+        sheet.addRow(rowValues);
+      });
+    }
+
+    // Generate Excel file buffer
     const buffer = await workbook.xlsx.writeBuffer();
+
+    // Upload to Supabase Storage
     const fileName = `${uuidv4()}_speaksheet.xlsx`;
     const filePath = `${userId}/${fileName}`;
 
@@ -69,14 +88,17 @@ export async function POST(req) {
         upsert: false,
       });
 
-    if (uploadError) throw uploadError;
+    if (uploadError) {
+      console.error("Upload error", uploadError);
+      throw uploadError;
+    }
 
-    // 4. Get public URL
+    // Get public URL
     const { data: publicUrlData } = supabase.storage
       .from("sheets")
       .getPublicUrl(filePath);
 
-    const file_url = publicUrlData.publicUrl;
+    const file_url = publicUrlData?.publicUrl;
 
     return Response.json({
       success: true,

@@ -1,6 +1,5 @@
-import { useId } from "react";
 
-export async function generateExcel({ schema, userId }) {
+export async function generateExcel({ schema, userId, file_read_data }) {
   const excelResponse = await fetch("/api/build-excel", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -8,6 +7,7 @@ export async function generateExcel({ schema, userId }) {
       schema,
       userId,
       //? Incase Files System is implemented add here
+      file_read_data
       //? Incase Files System is implemented add here
     }),
   });
@@ -17,3 +17,4 @@ export async function generateExcel({ schema, userId }) {
     throw new Error(excelData.error || "Failed to build Excel");
   return excelData;
 }
+
