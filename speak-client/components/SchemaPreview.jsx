@@ -1,5 +1,5 @@
 import { Card } from "./ui/card";
-import { cn } from "@/lib/utils"; // Make sure you have this from shadcn
+import { cn } from "@/lib/utils";
 import { 
   AlertTriangle,
   FileText,
@@ -7,35 +7,36 @@ import {
   Calendar,
   ChevronDown,
   List,
+  Table2,
 } from "lucide-react";
 
-// Helper component for the type badge, making the main component cleaner.
+// Type badge with sharp, minimal design
 const TypeBadge = ({ type }) => {
   const typeStyles = {
     text: {
       icon: <FileText className="h-3 w-3" />,
       label: "Text",
-      className: "bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300",
+      className: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800",
     },
     number: {
       icon: <Hash className="h-3 w-3" />,
       label: "Number",
-      className: "bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300",
+      className: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800",
     },
     date: {
       icon: <Calendar className="h-3 w-3" />,
       label: "Date",
-      className: "bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300",
+      className: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800",
     },
     dropdown: {
       icon: <ChevronDown className="h-3 w-3" />,
       label: "Dropdown",
-      className: "bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300",
+      className: "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/50 dark:text-purple-300 dark:border-purple-800",
     },
     default: {
       icon: <FileText className="h-3 w-3" />,
       label: type,
-      className: "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300",
+      className: "bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700",
     },
   };
 
@@ -44,7 +45,7 @@ const TypeBadge = ({ type }) => {
   return (
     <div
       className={cn(
-        "flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-medium",
+        "flex items-center gap-1.5 rounded-sm border px-2.5 py-1 text-xs font-semibold",
         style.className
       )}
     >
@@ -54,58 +55,100 @@ const TypeBadge = ({ type }) => {
   );
 };
 
-
 export const SchemaPreview = ({ schema }) => {
   let parsedSchema = [];
 
-  // --- Logic for parsing and validation remains the same ---
   try {
-    if (schema && (typeof schema === "string" || Array.isArray(schema))) {
-      parsedSchema = typeof schema === "string" ? JSON.parse(schema) : schema;
+    if (schema.columns && (typeof schema.columns === "string" || Array.isArray(schema.columns))) {
+      parsedSchema = typeof schema === "string" ? JSON.parse(schema.columns) : schema.columns;
     }
   } catch (err) {
     console.error("Invalid schema format:", err);
     return (
-      <div className="mt-6 flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-destructive/50 bg-destructive/5 p-8 text-center text-sm text-destructive">
-        <AlertTriangle className="h-6 w-6" />
-        <p className="font-medium">Failed to Parse Schema</p>
-        <p className="text-xs">The generated structure was invalid. Please try rephrasing your prompt.</p>
+      <div className="mt-6 flex flex-col items-center justify-center gap-3 rounded-sm border-2 border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-950/20 p-8 text-center">
+        <div className="flex h-12 w-12 items-center justify-center rounded-sm bg-red-100 dark:bg-red-900/50">
+          <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400" />
+        </div>
+        <div className="space-y-1">
+          <p className="font-semibold text-red-700 dark:text-red-300">Failed to Parse Schema</p>
+          <p className="text-sm text-red-600/80 dark:text-red-400/80">
+            The generated structure was invalid. Please try rephrasing your prompt.
+          </p>
+        </div>
       </div>
     );
   }
 
   if (!Array.isArray(parsedSchema) || parsedSchema.length === 0) {
     return (
-      <div className="mt-6 flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-        <List className="h-6 w-6" />
-        <p className="font-medium">Schema Preview</p>
-        <p className="text-xs">Detected columns will appear here once generated.</p>
+      <div className="mt-6 flex flex-col items-center justify-center gap-3 rounded-sm border-2 border-dashed border-emerald-200 dark:border-emerald-800 bg-emerald-50/30 dark:bg-emerald-950/10 p-8 text-center">
+        <div className="flex h-12 w-12 items-center justify-center rounded-sm bg-emerald-100 dark:bg-emerald-900/50">
+          <Table2 className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+        </div>
+        <div className="space-y-1">
+          <p className="font-semibold text-emerald-700 dark:text-emerald-300">Schema Preview</p>
+          <p className="text-sm text-emerald-600/80 dark:text-emerald-400/80">
+            Detected columns will appear here once generated.
+          </p>
+        </div>
       </div>
     );
   }
 
-  // --- New, minimal rendering inspired by the image ---
   return (
     <div className="mt-6 space-y-4">
-      <h2 className="text-base font-semibold text-foreground">
-        🧾 Detected Columns
-      </h2>
-      <div className="space-y-2">
+      {/* Header with table icon */}
+      <div className="flex items-center gap-2 border-b-2 border-emerald-200 dark:border-emerald-800 pb-3">
+        <div className="flex h-7 w-7 items-center justify-center rounded-sm bg-emerald-500">
+          <Table2 className="h-4 w-4 text-white" />
+        </div>
+        <h2 className="text-base font-semibold text-foreground">
+          Detected Columns
+        </h2>
+        <span className="ml-auto rounded-sm bg-emerald-100 dark:bg-emerald-950/50 px-2 py-0.5 text-xs font-mono font-semibold text-emerald-700 dark:text-emerald-300">
+          {parsedSchema.length} {parsedSchema.length === 1 ? 'column' : 'columns'}
+        </span>
+      </div>
+
+      {/* Table-like container */}
+      <div className="space-y-0 overflow-hidden rounded-sm border-2 border-emerald-200/40 dark:border-emerald-800/40 bg-background">
         {parsedSchema.map((col, index) => (
           <div
             key={col.columnName || index}
-            className="flex items-center justify-between gap-4 rounded-lg border bg-background p-3 transition-colors hover:bg-muted/50"
+            className={cn(
+              "flex items-center justify-between gap-4 border-b border-emerald-100 dark:border-emerald-900/30 p-4 transition-colors",
+              "hover:bg-emerald-50/50 dark:hover:bg-emerald-950/20",
+              // Remove border from last item
+              index === parsedSchema.length - 1 && "border-b-0",
+              // Add left accent
+              "border-l-2 border-l-transparent hover:border-l-emerald-500"
+            )}
           >
-            {/* Left Side: Column Name and Type Badge */}
-            <div className="w-full flex justify-between items-center gap-3">
-              <span className="font-medium text-foreground">
+            {/* Left: Row number and Column Name */}
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              {/* Row number (Excel-like) */}
+              <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-sm bg-emerald-100 dark:bg-emerald-900/50 text-xs font-mono font-semibold text-emerald-700 dark:text-emerald-300">
+                {index + 1}
+              </div>
+              
+              {/* Column name */}
+              <span className="font-semibold text-foreground truncate">
                 {col.columnName}
               </span>
-              <TypeBadge type={col.type} />
             </div>
 
+            {/* Right: Type Badge */}
+            <TypeBadge type={col.type} />
           </div>
         ))}
+      </div>
+
+      {/* Footer info */}
+      <div className="flex items-center gap-2 rounded-sm border border-emerald-200 dark:border-emerald-800 bg-emerald-50/30 dark:bg-emerald-950/10 px-3 py-2">
+        <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+        <p className="text-xs text-emerald-700 dark:text-emerald-300">
+          Schema ready for generation
+        </p>
       </div>
     </div>
   );

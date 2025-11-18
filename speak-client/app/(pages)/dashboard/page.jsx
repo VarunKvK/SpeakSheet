@@ -5,24 +5,16 @@ import React, { useEffect, useState } from "react";
 import { SchemaPreview } from "@/components/SchemaPreview";
 import { supabase } from "@/lib/supabaseClient";
 import Link from "next/link";
-import { Download } from "lucide-react";
+import { Download, FileSpreadsheet, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 /**
- * Dashboard Component (Refactored for Modern AI UX)
+ * Dashboard Component - Excel-Inspired Design
  *
- * A redesigned dashboard featuring a floating "command center" layout and a
- * dynamic aurora background, creating a premium and focused user experience.
- *
- * Features:
- * - Animated aurora background for a high-tech feel.
- * - Floating glassmorphism card for the main interaction zone.
- * - Improved visual hierarchy with a bold headline and generous spacing.
- * - Dedicated results section that animates in smoothly.
- * - Polished UI elements for all states.
+ * A clean, professional dashboard with sharp edges and green theme.
+ * Spreadsheet-inspired visual elements throughout.
  */
 const Dashboard = () => {
-  // --- All your state and logic remain the same ---
   const [prompt, setPrompt] = useState("");
   const [error, setError] = useState("");
   const [file, setFile] = useState(null);
@@ -45,35 +37,49 @@ const Dashboard = () => {
   }, []);
 
   return (
-    // --- 1. Main Page Container with Aurora Background ---
-    <main className="relative min-h-screen overflow-hidden bg-background">
-      {/* The Aurora Background Div */}
-      <div className="absolute inset-0 z-0 opacity-40 dark:opacity-60 [mask-image:radial-gradient(100%_100%_at_top,white,transparent)]">
-          <div 
-            className="absolute inset-[-200%] animate-[aurora_20s_linear_infinite]"
-            style={{
-              backgroundImage: "radial-gradient(ellipse_200%_100%_at_50%_0%,rgba(148,163,184,0.3),rgba(255,255,255,0)), radial-gradient(ellipse_200%_100%_at_50%_0%,rgba(168,85,247,0.2),rgba(255,255,255,0))"
-            }}
-          ></div>
-      </div>
+    <main className="relative min-h-screen overflow-hidden bg-gradient-to-br from-background via-emerald-50/20 to-background dark:via-emerald-950/10">
+      {/* Subtle grid background pattern */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#10b98108_1px,transparent_1px),linear-gradient(to_bottom,#10b98108_1px,transparent_1px)] bg-[size:40px_40px]" />
+      
+      {/* Top accent bar (Excel ribbon-inspired) */}
+      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 via-emerald-400 to-emerald-500" />
       
       {/* Content Wrapper */}
       <div className="relative z-10 flex h-full flex-col p-4 pt-12 md:p-8">
-        {/* --- 2. Page Header --- */}
-        <header className="mx-auto max-w-2xl text-center">
-          <h1 className="text-4xl font-bold tracking-tighter md:text-5xl">
-            SpeakSheet
-          </h1>
-          <p className="mt-4 text-lg text-muted-foreground">
+        {/* Page Header */}
+        <header className="mx-auto max-w-2xl text-center mb-8">
+          <div className="mb-4 flex items-center justify-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-sm bg-emerald-500 shadow-lg">
+              <FileSpreadsheet className="h-6 w-6 text-white" />
+            </div>
+            <h1 className="text-4xl font-bold tracking-tight md:text-5xl">
+              SpeakSheet
+            </h1>
+          </div>
+          <p className="text-base text-muted-foreground max-w-lg mx-auto">
             From a simple idea to a complete spreadsheet in seconds. Describe what you need, and let AI do the rest.
           </p>
         </header>
 
-        {/* --- 3. Floating Command Center Layout --- */}
-        <div className="flex flex-1 items-end justify-center">
+        {/* Main Content Area */}
+        <div className="flex flex-1 items-start justify-center">
           <div className="w-full max-w-4xl space-y-6">
-            {/* The main interaction card */}
-            <div className="mt-18 space-y-6 rounded-2xl border bg-background/80 p-6 shadow-2xl backdrop-blur-xl md:p-8">
+            {/* Main Interaction Card */}
+            <div className="relative space-y-6 rounded-sm border-2 border-emerald-200/40 dark:border-emerald-800/40 bg-background/95 p-6 shadow-lg backdrop-blur-sm md:p-8">
+              {/* Top decorative bar */}
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500/20 via-emerald-400/30 to-emerald-500/20" />
+              
+              {/* Left accent line */}
+              <div className="absolute top-0 left-0 bottom-0 w-1 bg-gradient-to-b from-emerald-500/20 via-emerald-400/10 to-transparent" />
+
+              {/* Section Label */}
+              <div className="flex items-center gap-2 pb-4 border-b border-emerald-100 dark:border-emerald-900/30">
+                <Sparkles className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                <h2 className="text-sm font-semibold text-emerald-700 dark:text-emerald-300 uppercase tracking-wide">
+                  Create Spreadsheet
+                </h2>
+              </div>
+
               <PromptInput
                 value={prompt}
                 promptValue={setPrompt}
@@ -87,7 +93,8 @@ const Dashboard = () => {
                 user={user}
                 setReadFile={setReadFile}
               />
-              <div className="flex justify-end">
+              
+              <div className="flex justify-end pt-2">
                 <GenerateButton
                   prompt={prompt}
                   setSchema={setSchema}
@@ -99,15 +106,32 @@ const Dashboard = () => {
               </div>
             </div>
 
-            {/* --- 4. Dedicated Results Area --- */}
-            {/* This section only appears after generation */}
+            {/* Results Area */}
             {(schema || excelUrl) && (
-              <div className="space-y-4 rounded-2xl border bg-background/80 p-6 shadow-2xl backdrop-blur-xl md:p-8 animate-in fade-in-0 slide-in-from-bottom-5 duration-500">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-semibold">Generation Results</h2>
-                  {/* --- 5. Polished Download Link --- */}
+              <div className="relative space-y-6 rounded-sm border-2 border-emerald-200/40 dark:border-emerald-800/40 bg-background/95 p-6 shadow-lg backdrop-blur-sm md:p-8 animate-in fade-in-0 slide-in-from-bottom-4 duration-500">
+                {/* Top decorative bar */}
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500/20 via-emerald-400/30 to-emerald-500/20" />
+                
+                {/* Left accent line */}
+                <div className="absolute top-0 left-0 bottom-0 w-1 bg-gradient-to-b from-emerald-500/20 via-emerald-400/10 to-transparent" />
+
+                {/* Header with Download Button */}
+                <div className="flex items-center justify-between gap-4 pb-4 border-b-2 border-emerald-200 dark:border-emerald-800">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-7 w-7 items-center justify-center rounded-sm bg-emerald-500">
+                      <FileSpreadsheet className="h-4 w-4 text-white" />
+                    </div>
+                    <h2 className="text-lg font-semibold text-foreground">
+                      Generation Results
+                    </h2>
+                  </div>
+
                   {excelUrl && (
-                    <Button asChild variant="outline">
+                    <Button 
+                    asChild 
+                    variant="outline"
+                    className="rounded-sm border-2 border-emerald-600 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/20"
+                    >
                       <Link href={excelUrl} target="_blank" rel="noopener noreferrer">
                         <Download className="mr-2 h-4 w-4" />
                         Download Sheet
@@ -115,11 +139,20 @@ const Dashboard = () => {
                     </Button>
                   )}
                 </div>
+
+                {/* Schema Preview */}
                 {schema && <SchemaPreview schema={schema} />}
               </div>
             )}
           </div>
         </div>
+
+        {/* Footer Info */}
+        <footer className="mt-12 text-center">
+          <p className="text-xs text-muted-foreground">
+            Powered by AI • Excel & CSV Compatible
+          </p>
+        </footer>
       </div>
     </main>
   );

@@ -5,15 +5,33 @@ export async function POST(req) {
   try {
     const ai = new GoogleGenAI(process.env.GEMINI_API_KEY);
     const systemPrompt = `
-        You are a schema generation assistant. Based on the user's natural language description of a spreadsheet, generate a JSON array of column definitions suitable for creating a Google Sheets table.
+        You are a spreadsheet schema + analytics assistant. Based on the user's natural language description of a spreadsheet, generate a JSON object definitions suitable for creating a Google Sheets table.
       
-        Each column should be represented as an object with the following fields:
-        - columnName: string (the name of the column)
-        - type: one of "text", "number", "date", or "dropdown"
-        - options: array of strings (only required if type is "dropdown")
-      
-        Respond ONLY with a valid JSON array. Do not include any explanation or markdown formatting.
-        User Prompt:${prompt}
+        Based on the user's description of a spreadsheet, generate a JSON object with the following structure:
+
+        {
+          "columns": [
+            {
+              "columnName": string,
+              "type": one of "text", "number", "date", "dropdown",
+              "options": [] (only if type is "dropdown")
+            },
+            ...
+          ],
+          "formulas": [
+            {
+              "label": "string label to display beside the formula",
+              "excelFormula": "Raw Excel Formula string",
+              "columnName": "string label of the columName that need to be taken"
+            }
+          ]
+        }
+
+        Only include formulas if the user prompt mentions any kind of computation, summary, aggregation, total, etc.
+
+        Respond ONLY with valid JSON — no explanation or markdown.
+
+        User Prompt: ${prompt}
         `;
 
     const response = await ai.models.generateContent({

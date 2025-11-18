@@ -2,11 +2,25 @@ import { supabase } from "@/lib/supabaseClient";
 import { v4 as uuidv4 } from "uuid";
 import ExcelJS from "exceljs";
 
+
+function replaceFullColumnRefs(formulaText, rowCount) {
+  return formulaText.replace(/([A-Z]+):\1/g, (_, col) => `${col}2:${col}${rowCount}`);
+}
+
+function getColumnLetter(index) {
+  let letter = "";
+  while (index >= 0) {
+    letter = String.fromCharCode((index % 26) + 65) + letter;
+    index = Math.floor(index / 26) - 1;
+  }
+  return letter;
+}
+
 // API Route (Next.js App Router)
 export async function POST(req) {
   const { schema, userId, file_read_data } = await req.json();
 
-  if (!userId || !schema?.length) {
+  if (!userId || !schema) {
     return Response.json(
       { error: "Missing schema or user ID" },
       { status: 400 }
@@ -19,7 +33,7 @@ export async function POST(req) {
 
     // Parse schema if it's a string
     let parsedSchema = schema;
-    if (typeof schema === "string") {
+    if (typeof parsedSchema === "string") {
       try {
         parsedSchema = JSON.parse(schema);
       } catch (err) {
@@ -30,15 +44,22 @@ export async function POST(req) {
       }
     }
 
-    if (!Array.isArray(parsedSchema)) {
+    if (!Array.isArray(parsedSchema.columns)) {
       return Response.json(
         { error: "Schema must be an array" },
         { status: 400 }
       );
     }
 
+    if (!parsedSchema.columns || !Array.isArray(parsedSchema.columns)) {
+      return Response.json({ error: "Malformed schema structure" }, { status: 400 });
+    }
+
+    const columns = parsedSchema.columns;
+    const formulas = Array.isArray(parsedSchema.formulas) ? parsedSchema.formulas : [];
+
     // Define headers from schema
-    const headers = parsedSchema.map((col) => ({
+    const headers = columns.map((col) => ({
       header: col.columnName,
       key: col.columnName,
       width: 25,
@@ -47,7 +68,7 @@ export async function POST(req) {
     sheet.columns = headers;
 
     // Add dropdown validations if defined
-    parsedSchema.forEach((col, index) => {
+    columns.forEach((col, index) => {
       if (col.type === "dropdown" && Array.isArray(col.options)) {
         sheet.getColumn(index + 1).eachCell((cell) => {
           cell.dataValidation = {
@@ -59,21 +80,51 @@ export async function POST(req) {
       }
     });
 
-    // ✅ Add rows from uploaded file if exists
+    let rowCount = 1; // Header is row 1
     if (Array.isArray(file_read_data)) {
       file_read_data.forEach((row) => {
         const rowValues = {};
-
-        parsedSchema.forEach((col) => {
+        columns.forEach((col) => {
           const key = col.columnName;
-          rowValues[key] = row[key] ?? "";
+          rowValues[key] = typeof row[key] === "number" ? row[key] : Number(row[key]) || 0;
         });
 
         sheet.addRow(rowValues);
+        rowCount++;
+      });
+    }
+
+    if (Array.isArray(formulas) && formulas.length > 0) {
+      const formulaStartRow = rowCount + 1; // Start after last data row
+
+      formulas.forEach((formula, index) => {
+        const rowNumber = formulaStartRow + index;
+
+        const labelCell = sheet.getCell(`A${rowNumber}`);
+        const targetIndex = columns.findIndex(c => c.columnName === formula.columnName);
+        const colLetter = getColumnLetter(targetIndex);
+        const formulaCell = sheet.getCell(`${colLetter}${rowNumber}`);
+        
+        labelCell.value = formula.label || `Formula ${index + 1}`;
+        labelCell.font = { bold: true };
+        labelCell.alignment = { vertical: "middle", horizontal: "left" };
+        
+        const formulaText = replaceFullColumnRefs(formula.excelFormula, rowCount);
+        formulaCell.value = { formula: formulaText, result: 0 };
+        formulaCell.font = { bold: true };
+        formulaCell.alignment = { vertical: "middle", horizontal: "left" };
+
+        // Optional: styling
+        labelCell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "FFEFFAFD" }
+        };
       });
     }
 
     // Generate Excel file buffer
+    workbook.calcProperties.fullCalcOnLoad = true;
     const buffer = await workbook.xlsx.writeBuffer();
 
     // Upload to Supabase Storage
