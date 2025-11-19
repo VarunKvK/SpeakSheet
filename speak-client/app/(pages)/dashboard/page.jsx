@@ -72,7 +72,7 @@ const Dashboard = () => {
                     // but we can restore the parsed data needed for generation.
                     if (parsed.readfile) setReadFile(parsed.readfile);
 
-                    toast("Welcome! We restored your generated sheet.");
+                    toast.success("Welcome! We restored your generated sheet.");
                     
                     // Clear cache so it doesn't overwrite future work
                     localStorage.removeItem("guest_work_cache");
@@ -105,20 +105,20 @@ const Dashboard = () => {
     setExcelUrl(null);
     // Also clear local storage just in case
     localStorage.removeItem("guest_work_cache");
-    toast("Workspace cleared");
+    toast.info("Workspace cleared");
   }, []);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setUser(null);
     handleReset(); // Clear screen on logout
-    toast("Logged out successfully");
+    toast.success("Logged out successfully");
     router.refresh();
   };
 
   // --- UPDATED GUEST HANDLER ---
   const handleGuestDownloadClick = () => {
-    toast("Redirecting to Login...", {
+    toast.info("Redirecting to Login...", {
         description: "We are saving your sheet so it's ready when you get back."
     });
 
