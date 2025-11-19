@@ -37,13 +37,13 @@ const GenerateButton = ({
   const handleClick = async () => {
     // 1. Input Validation Guard
     if (!prompt.trim() && !readfile) {
-      toast("Missing Input", { description: "Please enter a prompt or upload a file." });
+      toast.warning("Missing Input", { description: "Please enter a prompt or upload a file." });
       return;
     }
 
     // 2. Consistency Guard
     if (readfile && !fileSchema) {
-      toast("File Analysis Missing", { description: "Please re-upload the file." });
+      toast.error("File Analysis Missing", { description: "Please re-upload the file." });
       return;
     }
 

@@ -3,25 +3,28 @@ import { NextResponse } from 'next/server'
 
 export async function middleware(req) {
   const res = NextResponse.next()
+  
+  // This line fixes the cookie session sync between Server and Client
   const supabase = createMiddlewareClient({ req, res })
+  const { data: { session } } = await supabase.auth.getSession()
 
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
-
-  // 1. If user is NOT logged in and tries to access dashboard, redirect to login
-  if (!session && req.nextUrl.pathname.startsWith('/dashboard')) {
-    return NextResponse.redirect(new URL('/auth/login', req.url))
-  }
-
-  // 2. If user IS logged in and tries to access login page, redirect to dashboard
-  if (session && req.nextUrl.pathname.startsWith('/auth/login')) {
+  // --- RULE 1: Protected Auth Pages ---
+  // If user is ALREADY logged in, do not let them see the Login page.
+  // Send them straight to the Dashboard.
+  if (session && req.nextUrl.pathname.startsWith('/auth/')) {
     return NextResponse.redirect(new URL('/dashboard', req.url))
   }
 
+  // --- RULE 2: Guest Access ---
+  // We do NOT block /dashboard here. 
+  // Guests are allowed to visit /dashboard to generate content.
+  
   return res
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/auth/login'],
+  matcher: [
+    // Apply to all routes except static files/images
+    '/((?!_next/static|_next/image|favicon.ico).*)',
+  ],
 }
