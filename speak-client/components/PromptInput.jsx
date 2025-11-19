@@ -1,6 +1,9 @@
 "use client";
-import { Textarea } from "./ui/textarea";
-import { Input } from "./ui/input";
+
+import { useState, useRef } from "react";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import {
   FileSpreadsheet,
   AlertCircle,
@@ -10,27 +13,38 @@ import {
   Plus,
   Lightbulb,
   Loader2,
-  Grid3x3,
 } from "lucide-react";
-import { useState, useRef } from "react";
-import { Button } from "./ui/button";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+
+// Logic imports
 import { uploadToSupabase } from "@/lib/uploadToSupabase";
 import { readFileData } from "@/app/(pages)/dashboard/functions/readUploadedFile";
-import { cn } from "@/lib/utils";
 import { analyzeUploadedFile } from "@/app/(pages)/dashboard/functions/analyzeUploadedFile";
 
+// --- Constants ---
+const MAX_FILE_SIZE_MB = 10;
+const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+const ALLOWED_MIME_TYPES = [
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", // .xlsx
+  "application/vnd.ms-excel", // .xls
+  "text/csv", // .csv
+];
+
 /**
- * PromptInput Component - Excel-Inspired Design
- * 
- * Features sharp, table-like aesthetics with green color theory
- * Subtle spreadsheet visual elements for brand consistency
+ * Helper: Sanitize filename for Supabase Storage
+ * Removes special characters to prevent storage path errors
  */
-const   PromptInput = ({
+const sanitizeFilename = (originalName) => {
+  const name = originalName.replace(/[^a-zA-Z0-9.-]/g, "_");
+  const timestamp = Date.now();
+  return `${timestamp}-${name}`;
+};
+
+const PromptInput = ({
   value,
   promptValue,
   maxLength = 500,
-  setError,
   error,
   className = "",
   setFile,
@@ -39,7 +53,7 @@ const   PromptInput = ({
   setUploading,
   setReadFile,
   user,
-  setFileSchema
+  setFileSchema,
 }) => {
   const [isFocused, setIsFocused] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -50,25 +64,27 @@ const   PromptInput = ({
   const characterCount = value.length;
   const isOverLimit = characterCount > maxLength;
 
-  const handlePrompt = (e) => {
-    const newValue = e.target.value;
-    promptValue(newValue);
+  // --- Handlers ---
+
+  const handlePromptChange = (e) => {
+    promptValue(e.target.value);
   };
 
-  const validateFile = (file) => {
-    const validTypes = [
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "application/vnd.ms-excel",
-      "text/csv",
-    ];
-    const maxSize = 10 * 1024 * 1024;
-
-    if (!validTypes.includes(file.type)) {
-      toast.error("Please select a valid Excel (.xlsx, .xls) or CSV file");
+  /**
+   * Strictly validates file type and size
+   */
+  const validateFile = (fileToCheck) => {
+    if (!ALLOWED_MIME_TYPES.includes(fileToCheck.type)) {
+      toast.error("Invalid File Type", {
+        description: "Please upload an Excel (.xlsx) or CSV file.",
+      });
       return false;
     }
-    if (file.size > maxSize) {
-      toast.error("File size must be less than 10MB");
+
+    if (fileToCheck.size > MAX_FILE_SIZE_BYTES) {
+      toast.error("File Too Large", {
+        description: `Max file size is ${MAX_FILE_SIZE_MB}MB.`,
+      });
       return false;
     }
     return true;
@@ -77,63 +93,110 @@ const   PromptInput = ({
   const handleFileSelect = async (selectedFile) => {
     if (!selectedFile) return;
 
-    if (validateFile(selectedFile)) {
-      setFile(selectedFile);
-      toast(`File "${selectedFile.name}" selected`);
-      setUploading(true);
-
-      try {
-        const { publicUrl } = await uploadToSupabase(selectedFile, user.id);
-        const fileData = await readFileData(selectedFile);
-        const schema = await analyzeUploadedFile(value, fileData);
-        
-        setFile(publicUrl);
-        setReadFile(fileData);
-        setFileSchema(schema)
-
-        toast("File uploaded and processed!");
-      } catch (error) {
-        console.error("File handling failed:", error);
-        toast("File handling failed");
-        setFile(null);
-      } finally {
-        setUploading(false);
-      }
+    // 1. Validation Layer
+    if (!validateFile(selectedFile)) {
+      // Reset input so user can try selecting the same file again if they fixed it
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
     }
-  };
 
-  const handleDragOver = (e) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-  
-  const handleDragLeave = (e) => {
-    e.preventDefault();
-    setIsDragging(false);
-  };
-  
-  const handleDrop = (e) => {
-    e.preventDefault();
-    setIsDragging(false);
-    const droppedFile = e.dataTransfer.files[0];
-    if (droppedFile) {
-      handleFileSelect(droppedFile);
+    // 2. Preparation Layer
+    // Create a sanitized copy of the file to send to Supabase
+    const sanitizedName = sanitizeFilename(selectedFile.name);
+    const fileToUpload = new File([selectedFile], sanitizedName, {
+      type: selectedFile.type,
+    });
+
+    setUploading(true);
+    // Optimistic UI update (show file immediately)
+    setFile(fileToUpload);
+    toast.info("Processing file...");
+
+    try {
+      // 3. Upload Layer (Supabase)
+      const uploadResult = await uploadToSupabase(fileToUpload, user.id);
+      
+      if (!uploadResult?.publicUrl) {
+        throw new Error("Upload failed: No public URL returned.");
+      }
+
+      // 4. Parsing Layer (Client-side Read)
+      // We read original file to save memory/latency vs fetching from URL immediately
+      const fileData = await readFileData(selectedFile);
+      if (!fileData) throw new Error("Failed to parse file data.");
+
+      // 5. Intelligence Layer (Gemini/Analysis)
+      const schema = await analyzeUploadedFile(value, fileData);
+      
+      if (!schema) throw new Error("AI Analysis failed to generate schema.");
+
+      // 6. Success State Update
+      setFile(uploadResult.publicUrl); // Store URL for persistence
+      setReadFile(fileData);
+      setFileSchema(schema);
+
+      toast.success("Complete", {
+        description: "File uploaded and analyzed successfully.",
+      });
+
+    } catch (err) {
+      console.error("File Pipeline Error:", err);
+      
+      // Granular Error Messaging
+      let errorMessage = "Something went wrong processing your file.";
+      const msg = err.message || "";
+
+      if (msg.includes("Upload")) errorMessage = "Failed to upload to cloud storage.";
+      else if (msg.includes("parse")) errorMessage = "Could not read file contents.";
+      else if (msg.includes("AI")) errorMessage = "AI Analysis failed. Please try again.";
+
+      toast.error("Process Failed", { description: errorMessage });
+      
+      // Rollback state on failure
+      handleRemoveFile(); 
+    } finally {
+      setUploading(false);
+      // Reset input value to allow selecting the same file again if failed
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
   const handleRemoveFile = () => {
     setFile(null);
     setReadFile(null);
+    setFileSchema(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
-    toast.info("File removed");
+    // Only show toast if not currently uploading (prevents toast spam during error rollback)
+    if (!uploading) toast.info("File removed");
   };
 
-  const handleUploadClick = () => {
-    fileInputRef.current?.click();
+  // --- Drag & Drop Handlers ---
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
   };
-  
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleFileSelect(e.dataTransfer.files[0]);
+    }
+  };
+
+  // --- Helper for UI ---
   const formatFileSize = (bytes) => {
     if (!bytes || bytes === 0) return "0 Bytes";
     const k = 1024;
@@ -142,26 +205,33 @@ const   PromptInput = ({
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
   };
 
+  // Helper to display file name safely
+  const getFileName = () => {
+    if (!file) return "";
+    if (typeof file === "object" && file.name) return file.name;
+    if (typeof file === "string") return file.split("/").pop() || "Uploaded File";
+    return "File";
+  };
+
+  const getFileSize = () => {
+    if (typeof file === "object" && file.size) return file.size;
+    return 0;
+  };
+
   return (
     <div className={cn("space-y-4", className)}>
-      {/* Main Container - Sharp, Table-like Design */}
+      {/* Main Container */}
       <div
         className={cn(
           "relative w-full overflow-hidden transition-all duration-300",
           "bg-gradient-to-br from-background to-emerald-50/30 dark:to-emerald-950/10",
-          // Sharp corners with subtle rounding
           "rounded-sm",
-          // Table-inspired borders
           "border-2 border-emerald-200/40 dark:border-emerald-800/40",
-          // Grid background pattern (subtle)
           "bg-[linear-gradient(to_right,#10b98114_1px,transparent_1px),linear-gradient(to_bottom,#10b98114_1px,transparent_1px)]",
           "bg-[size:20px_20px]",
           {
-            // Focus state - green accent
             "border-emerald-500 shadow-lg shadow-emerald-500/20 ring-2 ring-emerald-500/20": isFocused,
-            // Error state
             "border-red-400 shadow-lg shadow-red-500/20": error,
-            // Dragging state
             "border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20": isDragging,
           }
         )}
@@ -169,37 +239,31 @@ const   PromptInput = ({
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
-        {/* Top Header Bar (Excel-like) */}
+        {/* Decorative Lines */}
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 via-emerald-400 to-emerald-500" />
-        
-        {/* Left Accent Line */}
         <div className="absolute top-0 left-0 bottom-0 w-1 bg-gradient-to-b from-emerald-500/20 via-emerald-400/10 to-transparent" />
 
-        {/* Main Content Area */}
         <div className="relative p-5">
-          {/* File Preview - Spreadsheet Header Style */}
+          {/* File Preview Section */}
           {file && (
             <div className="mb-4 animate-in slide-in-from-top-2 duration-300">
               <div className="group relative flex items-center gap-3 border border-emerald-200 dark:border-emerald-800 bg-gradient-to-r from-emerald-50 to-white dark:from-emerald-950/50 dark:to-background p-3 shadow-sm">
-                {/* Decorative corner */}
+                {/* Decorative corners */}
                 <div className="absolute top-0 left-0 w-2 h-2 border-t-2 border-l-2 border-emerald-500" />
                 <div className="absolute bottom-0 right-0 w-2 h-2 border-b-2 border-r-2 border-emerald-500" />
                 
-                {/* File icon with green background */}
                 <div className="flex h-10 w-10 items-center justify-center rounded-sm bg-emerald-500 shadow-sm">
                   <FileSpreadsheet className="h-5 w-5 text-white" />
                 </div>
                 
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-foreground truncate flex items-center gap-2">
-                    {typeof file === 'object' && file.name ? file.name : file.split('/').pop()}
+                    {getFileName()}
                     <FileCheck className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                   </p>
-                  {typeof file === 'object' && file.size && (
-                    <p className="text-xs text-muted-foreground font-mono">
-                      {formatFileSize(file.size)}
-                    </p>
-                  )}
+                  <p className="text-xs text-muted-foreground font-mono">
+                   {formatFileSize(getFileSize())}
+                  </p>
                 </div>
                 
                 <Button
@@ -208,21 +272,21 @@ const   PromptInput = ({
                   size="sm"
                   onClick={handleRemoveFile}
                   className="h-8 w-8 p-0 hover:bg-red-100 dark:hover:bg-red-950 transition-colors"
-                  aria-label="Remove file"
                   disabled={uploading}
                 >
                   <X className="h-4 w-4 text-muted-foreground hover:text-red-600" />
+                  <span className="sr-only">Remove File</span>
                 </Button>
               </div>
             </div>
           )}
 
-          {/* Textarea */}
+          {/* Main Text Area */}
           <Textarea
             ref={textareaRef}
             id="prompt-input"
             className={cn(
-              "w-full resize-none border-none bg-transparent p-2 pb-14 text-base",
+              "w-full resize-none border-none bg-transparent p-0 pb-14 text-base",
               "min-h-[100px] focus-visible:ring-0 focus-visible:ring-offset-0",
               "placeholder:text-muted-foreground/60",
               { "text-red-600 dark:text-red-400": isOverLimit }
@@ -233,22 +297,23 @@ const   PromptInput = ({
                 : "Describe your spreadsheet... e.g., 'A project tracker with columns for Task, Assignee, Status, and Deadline'"
             }
             value={value}
-            onChange={handlePrompt}
+            onChange={handlePromptChange}
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
             maxLength={maxLength}
             aria-invalid={!!error || isOverLimit}
+            disabled={uploading} 
           />
 
-          {/* Bottom Control Bar - Sharp Design */}
-          <div className="absolute bottom-4 left-6.5 right-4 flex items-center justify-between gap-2">
+          {/* Bottom Controls */}
+          <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              {/* Add File Button */}
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={handleUploadClick}
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
                 className={cn(
                   "h-9 gap-2 rounded-sm border-emerald-300 dark:border-emerald-700",
                   "bg-white dark:bg-background shadow-sm",
@@ -259,25 +324,8 @@ const   PromptInput = ({
                 <Plus className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                 <span className="text-sm font-medium">Add File</span>
               </Button>
-
-              {/* Grid Icon Button (Decorative) */}
-              {/* <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => textareaRef.current?.focus()}
-                className={cn(
-                  "h-9 w-9 p-0 rounded-sm border-emerald-300 dark:border-emerald-700",
-                  "bg-white dark:bg-background shadow-sm",
-                  "hover:bg-emerald-50 hover:border-emerald-400 dark:hover:bg-emerald-950/50"
-                )}
-                title="Focus input"
-              >
-                <Grid3x3 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-              </Button> */}
             </div>
             
-            {/* Character Counter - Table Cell Style */}
             <div
               className={cn(
                 "flex items-center gap-2 rounded-sm px-3 py-1.5 text-xs font-mono font-semibold",
@@ -293,7 +341,6 @@ const   PromptInput = ({
           </div>
         </div>
 
-        {/* Hidden File Input */}
         <Input
           ref={fileInputRef}
           type="file"
@@ -302,9 +349,8 @@ const   PromptInput = ({
           className="hidden"
         />
 
-        {/* Drag Overlay - Spreadsheet Theme */}
         {isDragging && (
-          <div className="absolute inset-0 bg-emerald-100/90 dark:bg-emerald-950/90 border-2 border-dashed border-emerald-500 flex flex-col items-center justify-center pointer-events-none backdrop-blur-sm">
+          <div className="absolute inset-0 z-50 bg-emerald-100/90 dark:bg-emerald-950/90 border-2 border-dashed border-emerald-500 flex flex-col items-center justify-center pointer-events-none backdrop-blur-sm">
             <div className="rounded-sm bg-emerald-500 p-4 shadow-lg">
               <Upload className="h-10 w-10 text-white animate-bounce" />
             </div>
@@ -318,7 +364,7 @@ const   PromptInput = ({
         )}
       </div>
 
-      {/* Upload Progress Indicator */}
+      {/* Processing State */}
       {uploading && (
         <div className="flex items-center justify-center gap-3 rounded-sm border border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20 p-4 animate-in fade-in duration-300">
           <div className="relative">
@@ -330,17 +376,16 @@ const   PromptInput = ({
               Processing spreadsheet...
             </span>
             <span className="text-xs text-emerald-600/70 dark:text-emerald-400/70">
-              Uploading and analyzing file structure
+              Uploading securely and analyzing structure
             </span>
           </div>
         </div>
       )}
 
-      {/* Error Message */}
+      {/* Error Display */}
       {error && (
         <div
-          id="prompt-error"
-          className="flex items-center gap-3 rounded-sm border-l-4 border-red-500 bg-red-50 dark:bg-red-950/20 p-4 text-sm"
+          className="flex items-center gap-3 rounded-sm border-l-4 border-red-500 bg-red-50 dark:bg-red-950/20 p-4 text-sm animate-in slide-in-from-left-2"
           role="alert"
         >
           <AlertCircle className="h-5 w-5 flex-shrink-0 text-red-600 dark:text-red-400" />
@@ -348,8 +393,8 @@ const   PromptInput = ({
         </div>
       )}
 
-      {/* Example Prompts - Table Style Pills */}
-      {!value && !file && !isFocused && (
+      {/* Quick Start Templates (Only show when empty) */}
+      {!value && !file && !isFocused && !uploading && (
         <div className="space-y-3 animate-in fade-in duration-500">
           <div className="flex items-center gap-2">
             <Lightbulb className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
@@ -358,33 +403,22 @@ const   PromptInput = ({
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              className="rounded-sm text-xs font-medium border-emerald-200 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 hover:border-emerald-400 transition-all"
-              onClick={() => promptValue("Track employee data: Name, Department, Salary, Experience, Start Date")}
-            >
-              <FileSpreadsheet className="mr-1.5 h-3.5 w-3.5 text-emerald-600" />
-              Employee Tracker
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="rounded-sm text-xs font-medium border-emerald-200 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 hover:border-emerald-400 transition-all"
-              onClick={() => promptValue("Inventory system with Product Name, SKU, Quantity, Price")}
-            >
-              <FileSpreadsheet className="mr-1.5 h-3.5 w-3.5 text-emerald-600" />
-              Inventory System
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="rounded-sm text-xs font-medium border-emerald-200 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 hover:border-emerald-400 transition-all"
-              onClick={() => promptValue("Student grades: Student Name, Subject, Score, Grade Level")}
-            >
-              <FileSpreadsheet className="mr-1.5 h-3.5 w-3.5 text-emerald-600" />
-              Student Grades
-            </Button>
+            {[
+               { label: "Employee Tracker", prompt: "Track employee data: Name, Department, Salary, Experience, Start Date" },
+               { label: "Inventory System", prompt: "Inventory system with Product Name, SKU, Quantity, Price" },
+               { label: "Student Grades", prompt: "Student grades: Student Name, Subject, Score, Grade Level" }
+            ].map((item, i) => (
+              <Button
+                key={i}
+                size="sm"
+                variant="outline"
+                className="rounded-sm text-xs font-medium border-emerald-200 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 hover:border-emerald-400 transition-all"
+                onClick={() => promptValue(item.prompt)}
+              >
+                <FileSpreadsheet className="mr-1.5 h-3.5 w-3.5 text-emerald-600" />
+                {item.label}
+              </Button>
+            ))}
           </div>
         </div>
       )}

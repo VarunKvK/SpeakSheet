@@ -150,3 +150,9 @@
     transform: translateX(300%);
   }
 }
+
+@keyframes progress {
+   0% { transform: scaleX(0); }
+   50% { transform: scaleX(0.7); }
+   100% { transform: scaleX(0); transform-origin: right; }
+}

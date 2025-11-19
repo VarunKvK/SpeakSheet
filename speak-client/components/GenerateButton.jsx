@@ -1,19 +1,18 @@
 "use client";
-import React from "react";
-import { FileSpreadsheet, Loader2, ArrowRight } from "lucide-react";
+import React, { useState } from "react";
+import { FileSpreadsheet, Loader2, ArrowRight, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+
+// Server Actions
 import { generateSchema } from "@/app/(pages)/dashboard/functions/generateSchema";
 import { saveSheetData } from "@/app/(pages)/dashboard/functions/saveSheetData";
 import { generateExcel } from "@/app/(pages)/dashboard/functions/generateExcelSheet";
 import { Button } from "./ui/button";
 
 /**
- * GenerateButton - Minimal Excel-Inspired Design
- *
- * A clean, professional button with sharp edges and green theme.
- * Focus on clarity and usability.
+ * GenerateButton - Enhanced Robustness
  */
 const GenerateButton = ({
   prompt,
@@ -26,124 +25,183 @@ const GenerateButton = ({
   readfile,
   fileSchema
 }) => {
-  const [loading, setLoading] = React.useState(false);
+  const [status, setStatus] = useState("idle"); // 'idle' | 'validating' | 'schema' | 'saving' | 'excel'
   const router = useRouter();
 
+  // Helper to get readable text based on current process step
+  const getLoadingText = () => {
+    switch (status) {
+      case "validating": return "Checking inputs...";
+      case "schema": return "Designing logic...";
+      case "saving": return "Saving workspace...";
+      case "excel": return "Compiling .xlsx...";
+      default: return "Processing";
+    }
+  };
+
   const handleClick = async () => {
-    if (!user) {
-      toast("Please log in to generate spreadsheets.");
+    // 1. Auth Guard
+    if (!user || !user.id) {
+      toast.error("Authentication Error", { description: "Please log in to continue." });
       router.push("/auth/login");
       return;
     }
 
+    // 2. Input Validation Guard
     if (!prompt.trim() && !readfile) {
-      toast.error("Please provide a prompt or upload a file.");
+      toast.warning("Missing Input", { description: "Please enter a prompt or upload a file." });
       return;
     }
 
-    setLoading(true);
-    const promise = async () => {
-      const generatedSchema = await generateSchema({ prompt });
-      setSchema(generatedSchema);
-      if (!generatedSchema) throw new Error("Could not understand your request. Please try rephrasing.");
+    // 3. Consistency Guard
+    if (readfile && !fileSchema) {
+      toast.error("File Analysis Missing", { 
+        description: "We couldn't analyze the uploaded file. Please remove and re-upload it." 
+      });
+      return;
+    }
 
-      const savedData = await saveSheetData({ userId: user.id, prompt, schema: generatedSchema, file_schema: fileSchema, fileUrl });
-      if (!savedData) throw new Error("Failed to save your sheet data.");
-      // const demo_schema = {
-      //   "columns": [
-      //     {
-      //       "columnName": "Name",
-      //       "type": "text"
-      //     },
-      //     {
-      //       "columnName": "Department",
-      //       "type": "text"
-      //     },
-      //     {
-      //       "columnName": "Salary",
-      //       "type": "number"
-      //     },
-      //     {
-      //       "columnName": "Experience",
-      //       "type": "number"
-      //     },
-      //     {
-      //       "columnName": "Start Date",
-      //       "type": "date"
-      //     }
-      //   ],
-      //   "formulas": [
-      //     {
-      //       "label": "Total Salary",
-      //       "excelFormula": "=SUM(C:C)",
-      //       "columnName": "Salary"
-      //     }
-      //   ]
-      // }
-      // const excelData = await generateExcel({ schema: demo_schema, userId: user.id, file_read_data: readfile });
-      const excelData = await generateExcel({ file_schema:savedData[0].file_schema ,schema: savedData[0].schema, userId: user.id, file_read_data: readfile });
-      if (!excelData || !excelData.url) throw new Error("Failed to generate the Excel file.");
+    setStatus("validating");
 
-      setExcelUrl(excelData.url);
-      return excelData;
+    // Define the workflow
+    const generateWorkflow = async () => {
+      try {
+        // --- Step A: Generate Schema (AI) ---
+        setStatus("schema");
+        const generatedSchema = await generateSchema({ prompt });
+        
+        if (!generatedSchema) {
+          throw new Error("AI could not generate a valid structure from your prompt.");
+        }
+        
+        setSchema(generatedSchema);
+
+        // --- Step B: Save to Database ---
+        setStatus("saving");
+        const savedData = await saveSheetData({ 
+          userId: user.id, 
+          prompt: prompt || "Uploaded File Generation", 
+          schema: generatedSchema, 
+          file_schema: fileSchema || null, 
+          fileUrl: fileUrl || null
+        });
+
+        if (!savedData || savedData.length === 0) {
+          throw new Error("Database connection failed while saving sheet.");
+        }
+
+        // --- Step C: Generate Physical Excel File ---
+        setStatus("excel");
+        const excelData = await generateExcel({ 
+          file_schema: savedData[0].file_schema, 
+          schema: savedData[0].schema, 
+          userId: user.id, 
+          file_read_data: readfile || null
+        });
+
+        if (!excelData || !excelData.url) {
+          throw new Error("Excel generation engine failed to return a download URL.");
+        }
+
+        // --- SUCCESS ---
+        // FIX: Update URL and reset status IMMEDIATELY here.
+        // Do not wait for the toast promise wrapper to resolve.
+        setExcelUrl(excelData.url);
+        setStatus("idle"); 
+        if (setUploading) setUploading(false);
+        
+        return excelData;
+
+      } catch (err) {
+        // FIX: Reset status on error here as well to prevent stuck loading state
+        setStatus("idle");
+        if (setUploading) setUploading(false);
+        throw err; // Re-throw so toast displays the error
+      }
     };
 
-    try {
-      await promise();
-    } catch (error) {
-      console.error("Generation process failed:", error);
-    } finally {
-      setLoading(false);
-      if (setUploading) setUploading(false);
-    }
+    // Execute Toast
+    // We don't await this block for state management anymore, 
+    // because state management is handled internally within generateWorkflow
+    toast.promise(generateWorkflow(), {
+      loading: 'Starting generation engine...',
+      success: 'Spreadsheet created successfully!',
+      error: (err) => err.message || "An unexpected error occurred."
+    });
   };
 
-  const isDisabled = loading || (!prompt.trim() && !readfile);
+  const isLoading = status !== "idle";
+  const isDisabled = isLoading || (!prompt.trim() && !readfile);
 
   return (
-    <div className={cn("relative w-full max-w-[240px]", className)}>
+    <div className={cn("relative w-full max-w-[260px]", className)}>
       <Button
         onClick={handleClick}
         disabled={isDisabled}
         className={cn(
-          "group relative flex h-12 w-full items-center justify-between gap-3 px-5",
-          "rounded-sm border-2 transition-all duration-150",
-          // Default state
+          "group relative flex h-12 w-full items-stretch justify-between p-0 overflow-hidden",
+          "rounded-sm border-2 transition-all duration-200",
           "bg-emerald-600 border-emerald-600 text-white shadow-sm",
-          // Hover state
-          "hover:bg-emerald-700 hover:border-emerald-700 hover:shadow-md",
-          // Active state
-          "active:bg-emerald-800",
-          // Disabled state
-          "disabled:bg-slate-300 disabled:border-slate-300 disabled:text-slate-500",
-          "disabled:cursor-not-allowed disabled:shadow-none",
+          "hover:bg-emerald-700 hover:border-emerald-700 hover:shadow-md hover:-translate-y-[1px]",
+          "active:bg-emerald-800 active:translate-y-0",
+          "disabled:bg-slate-100 disabled:border-slate-200 disabled:text-slate-400",
+          "disabled:cursor-not-allowed disabled:shadow-none disabled:hover:translate-y-0",
         )}
-        aria-label={loading ? "Generating spreadsheet..." : "Generate spreadsheet"}
-        aria-busy={loading}
+        aria-label={isLoading ? getLoadingText() : "Generate spreadsheet"}
+        aria-busy={isLoading}
       >
-        {/* Left icon */}
-        {loading ? (
-          <Loader2 className="h-5 w-5 animate-spin flex-shrink-0" />
-        ) : (
-          <FileSpreadsheet className="h-5 w-5 flex-shrink-0" />
-        )}
+        <div className="flex flex-1 items-center gap-3 px-4">
+          {isLoading ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <FileSpreadsheet className="h-4 w-4" />
+          )}
 
-        {/* Text */}
-        <span className="flex-1 text-sm font-semibold">
-          {loading ? "Generating..." : "Generate Sheet"}
-        </span>
+          <div className="flex flex-col items-start text-left leading-none">
+            <span className="text-sm font-bold tracking-wide">
+              {isLoading ? "Processing" : "Generate"}
+            </span>
+            <span className="text-[10px] font-mono opacity-80 mt-1 uppercase">
+              {isLoading ? getLoadingText() : "Output: .XLSX"}
+            </span>
+          </div>
+        </div>
 
-        {/* Right arrow */}
-        <ArrowRight className={cn(
-          "h-4 w-4 flex-shrink-0 transition-transform duration-150",
-          "group-hover:translate-x-0.5"
+        <div className={cn(
+          "w-[1px] bg-white/20 h-full",
+          isDisabled && "bg-slate-300"
         )} />
+
+        <div className={cn(
+          "flex w-12 items-center justify-center bg-black/10 transition-colors",
+          "group-hover:bg-black/20",
+          isDisabled && "bg-transparent"
+        )}>
+          {isLoading ? (
+            <Sparkles className="h-4 w-4 animate-pulse text-white/80" />
+          ) : (
+            <ArrowRight className={cn(
+              "h-4 w-4 transition-transform duration-200",
+              "group-hover:translate-x-0.5"
+            )} />
+          )}
+        </div>
       </Button>
 
-      {/* Simple loading indicator */}
-      {loading && (
-        <div className="mt-2 h-0.5 w-full overflow-hidden rounded-sm bg-emerald-100 dark:bg-emerald-950/30">
-          <div className="h-full w-1/2 animate-[slide_1s_ease-in-out_infinite] bg-emerald-500" />
+      {/* Technical Loading Progress Bar */}
+      {isLoading && (
+        <div className="mt-2 flex items-center justify-between gap-2 animate-in fade-in duration-300">
+          <div className="relative h-1 w-full overflow-hidden rounded-sm bg-emerald-100 dark:bg-emerald-950/30">
+            <div 
+              className={cn(
+                "h-full w-full origin-left bg-emerald-500 transition-all duration-500",
+                "animate-[progress_1.5s_ease-in-out_infinite]" 
+              )} 
+            />
+          </div>
+          <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 animate-pulse">
+            {status === 'excel' ? '90%' : status === 'saving' ? '60%' : '30%'}
+          </span>
         </div>
       )}
     </div>

@@ -19,7 +19,7 @@ function getColumnLetter(index) {
 // API Route (Next.js App Router)
 export async function POST(req) {
   const { file_schema ,schema, userId, file_read_data } = await req.json();
-  if (!userId || !schema || !file_schema) {
+  if (!userId || !schema) {
     return Response.json(
       { error: "Missing file_schema or schema or user ID" },
       { status: 400 }
