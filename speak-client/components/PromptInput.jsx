@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { uploadToSupabase } from "@/lib/uploadToSupabase";
 import { readFileData } from "@/app/(pages)/dashboard/functions/readUploadedFile";
 import { cn } from "@/lib/utils";
+import { analyzeUploadedFile } from "@/app/(pages)/dashboard/functions/analyzeUploadedFile";
 
 /**
  * PromptInput Component - Excel-Inspired Design
@@ -38,6 +39,7 @@ const   PromptInput = ({
   setUploading,
   setReadFile,
   user,
+  setFileSchema
 }) => {
   const [isFocused, setIsFocused] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -77,20 +79,22 @@ const   PromptInput = ({
 
     if (validateFile(selectedFile)) {
       setFile(selectedFile);
-      toast.success(`File "${selectedFile.name}" selected`);
+      toast(`File "${selectedFile.name}" selected`);
       setUploading(true);
 
       try {
         const { publicUrl } = await uploadToSupabase(selectedFile, user.id);
         const fileData = await readFileData(selectedFile);
+        const schema = await analyzeUploadedFile(value, fileData);
         
         setFile(publicUrl);
         setReadFile(fileData);
+        setFileSchema(schema)
 
-        toast.success("File uploaded and processed!");
+        toast("File uploaded and processed!");
       } catch (error) {
         console.error("File handling failed:", error);
-        toast.error("File handling failed");
+        toast("File handling failed");
         setFile(null);
       } finally {
         setUploading(false);

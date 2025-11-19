@@ -24,6 +24,7 @@ const GenerateButton = ({
   setUploading,
   setExcelUrl,
   readfile,
+  fileSchema
 }) => {
   const [loading, setLoading] = React.useState(false);
   const router = useRouter();
@@ -45,9 +46,8 @@ const GenerateButton = ({
       const generatedSchema = await generateSchema({ prompt });
       setSchema(generatedSchema);
       if (!generatedSchema) throw new Error("Could not understand your request. Please try rephrasing.");
-      console.log("GENERATED SCHEMA ", generatedSchema)
 
-      const savedData = await saveSheetData({ userId: user.id, prompt, schema: generatedSchema, fileUrl });
+      const savedData = await saveSheetData({ userId: user.id, prompt, schema: generatedSchema, file_schema: fileSchema, fileUrl });
       if (!savedData) throw new Error("Failed to save your sheet data.");
       // const demo_schema = {
       //   "columns": [
@@ -81,7 +81,7 @@ const GenerateButton = ({
       //   ]
       // }
       // const excelData = await generateExcel({ schema: demo_schema, userId: user.id, file_read_data: readfile });
-      const excelData = await generateExcel({ schema: savedData[0].schema, userId: user.id, file_read_data: readfile });
+      const excelData = await generateExcel({ file_schema:savedData[0].file_schema ,schema: savedData[0].schema, userId: user.id, file_read_data: readfile });
       if (!excelData || !excelData.url) throw new Error("Failed to generate the Excel file.");
 
       setExcelUrl(excelData.url);

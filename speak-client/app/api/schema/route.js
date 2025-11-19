@@ -48,3 +48,6 @@ export async function POST(req) {
     );
   }
 }
+
+
+// prompt:Track employee data: Name, Department, Salary , Experience, Start Date. Average both Salary and Experience separately and then calculate the average of it. 

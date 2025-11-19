@@ -18,11 +18,10 @@ function getColumnLetter(index) {
 
 // API Route (Next.js App Router)
 export async function POST(req) {
-  const { schema, userId, file_read_data } = await req.json();
-
-  if (!userId || !schema) {
+  const { file_schema ,schema, userId, file_read_data } = await req.json();
+  if (!userId || !schema || !file_schema) {
     return Response.json(
-      { error: "Missing schema or user ID" },
+      { error: "Missing file_schema or schema or user ID" },
       { status: 400 }
     );
   }
@@ -80,13 +79,21 @@ export async function POST(req) {
       }
     });
 
+    // 🔁 Matching logic function for input data keys
+    const getMappedColumnSource = (columnName) => {
+      const match = file_schema?.columns?.find(col => col.columnName === columnName);
+      return match && match.mapFrom ? match.mapFrom : columnName;
+    };
+
     let rowCount = 1; // Header is row 1
     if (Array.isArray(file_read_data)) {
       file_read_data.forEach((row) => {
         const rowValues = {};
+
         columns.forEach((col) => {
-          const key = col.columnName;
-          rowValues[key] = typeof row[key] === "number" ? row[key] : Number(row[key]) || 0;
+          const targetColumn = col.columnName;
+          const sourceColumn = getMappedColumnSource(targetColumn); 
+          rowValues[targetColumn] = row[sourceColumn] ?? "";
         });
 
         sheet.addRow(rowValues);
@@ -119,6 +126,11 @@ export async function POST(req) {
           type: "pattern",
           pattern: "solid",
           fgColor: { argb: "FFEFFAFD" }
+        };
+        formulaCell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "FFEFFA" }
         };
       });
     }

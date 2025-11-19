@@ -2,7 +2,7 @@ import { supabase } from "@/lib/supabaseClient";
 
 export async function POST(request) {
   try {
-    const { userId, prompt, schema, fileUrl } = await request.json();
+    const { userId, prompt, schema, fileUrl, file_schema } = await request.json();
 
     // 🚫 Validate required fields
     if (!userId) {
@@ -17,6 +17,7 @@ export async function POST(request) {
       user_id: userId,
       prompt: prompt || null,
       schema: schema || null,
+      file_schema:file_schema || null,
       created_at: new Date().toISOString(),
     };
 

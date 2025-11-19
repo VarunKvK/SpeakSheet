@@ -20,6 +20,7 @@ const Dashboard = () => {
   const [file, setFile] = useState(null);
   const [readfile, setReadFile] = useState();
   const [schema, setSchema] = useState(null);
+  const [fileSchema, setFileSchema] = useState(null);
   const [user, setUser] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [excelUrl, setExcelUrl] = useState();
@@ -88,6 +89,7 @@ const Dashboard = () => {
                 maxLength={500}
                 setFile={setFile}
                 file={file}
+                setFileSchema={setFileSchema}
                 uploading={uploading}
                 setUploading={setUploading}
                 user={user}
@@ -102,6 +104,7 @@ const Dashboard = () => {
                   user={user}
                   setExcelUrl={setExcelUrl}
                   readfile={readfile}
+                  fileSchema={fileSchema}
                 />
               </div>
             </div>

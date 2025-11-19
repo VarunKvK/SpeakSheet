@@ -1,14 +1,13 @@
 
-export async function generateExcel({ schema, userId, file_read_data }) {
+export async function generateExcel({ schema, userId, file_read_data, file_schema }) {
   const excelResponse = await fetch("/api/build-excel", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       schema,
       userId,
-      //? Incase Files System is implemented add here
+      file_schema,
       file_read_data
-      //? Incase Files System is implemented add here
     }),
   });
 
