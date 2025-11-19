@@ -5,30 +5,25 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 
-// Server Actions
 import { generateSchema } from "@/app/(pages)/dashboard/functions/generateSchema";
 import { saveSheetData } from "@/app/(pages)/dashboard/functions/saveSheetData";
 import { generateExcel } from "@/app/(pages)/dashboard/functions/generateExcelSheet";
 import { Button } from "./ui/button";
 
-/**
- * GenerateButton - Enhanced Robustness
- */
 const GenerateButton = ({
   prompt,
   setSchema,
   className = "",
   fileUrl,
-  user,
+  user, // Can be null now
   setUploading,
   setExcelUrl,
   readfile,
   fileSchema
 }) => {
-  const [status, setStatus] = useState("idle"); // 'idle' | 'validating' | 'schema' | 'saving' | 'excel'
+  const [status, setStatus] = useState("idle");
   const router = useRouter();
 
-  // Helper to get readable text based on current process step
   const getLoadingText = () => {
     switch (status) {
       case "validating": return "Checking inputs...";
@@ -40,62 +35,57 @@ const GenerateButton = ({
   };
 
   const handleClick = async () => {
-    // 1. Auth Guard
-    if (!user || !user.id) {
-      toast.error("Authentication Error", { description: "Please log in to continue." });
-      router.push("/auth/login");
-      return;
-    }
-
-    // 2. Input Validation Guard
+    // 1. Input Validation Guard
     if (!prompt.trim() && !readfile) {
-      toast.warning("Missing Input", { description: "Please enter a prompt or upload a file." });
+      toast("Missing Input", { description: "Please enter a prompt or upload a file." });
       return;
     }
 
-    // 3. Consistency Guard
+    // 2. Consistency Guard
     if (readfile && !fileSchema) {
-      toast.error("File Analysis Missing", { 
-        description: "We couldn't analyze the uploaded file. Please remove and re-upload it." 
-      });
+      toast("File Analysis Missing", { description: "Please re-upload the file." });
       return;
     }
 
     setStatus("validating");
 
-    // Define the workflow
     const generateWorkflow = async () => {
       try {
         // --- Step A: Generate Schema (AI) ---
         setStatus("schema");
         const generatedSchema = await generateSchema({ prompt });
         
-        if (!generatedSchema) {
-          throw new Error("AI could not generate a valid structure from your prompt.");
-        }
-        
+        if (!generatedSchema) throw new Error("AI could not generate a valid structure.");
         setSchema(generatedSchema);
 
-        // --- Step B: Save to Database ---
-        setStatus("saving");
-        const savedData = await saveSheetData({ 
-          userId: user.id, 
-          prompt: prompt || "Uploaded File Generation", 
-          schema: generatedSchema, 
-          file_schema: fileSchema || null, 
-          fileUrl: fileUrl || null
-        });
-
-        if (!savedData || savedData.length === 0) {
-          throw new Error("Database connection failed while saving sheet.");
+        // --- Step B: Save to Database (ONLY IF USER IS LOGGED IN) ---
+        let savedData = [];
+        if (user && user.id) {
+          setStatus("saving");
+          // Save to DB for history
+          const result = await saveSheetData({ 
+            userId: user.id, 
+            prompt: prompt || "Uploaded File Generation", 
+            schema: generatedSchema, 
+            file_schema: fileSchema || null, 
+            fileUrl: fileUrl || null
+          });
+          savedData = result;
+        } else {
+           // Guest Mode: Skip DB save, mock the data structure needed for next step
+           savedData = [{
+             file_schema: fileSchema || null,
+             schema: generatedSchema
+           }];
         }
 
         // --- Step C: Generate Physical Excel File ---
         setStatus("excel");
         const excelData = await generateExcel({ 
-          file_schema: savedData[0].file_schema, 
-          schema: savedData[0].schema, 
-          userId: user.id, 
+          // If we saved, use saved data. If guest, use passed props/generated schema
+          file_schema: savedData[0]?.file_schema || fileSchema, 
+          schema: savedData[0]?.schema || generatedSchema, 
+          userId: user ? user.id : "guest", // Pass 'guest' string if backend requires a string
           file_read_data: readfile || null
         });
 
@@ -103,29 +93,22 @@ const GenerateButton = ({
           throw new Error("Excel generation engine failed to return a download URL.");
         }
 
-        // --- SUCCESS ---
-        // FIX: Update URL and reset status IMMEDIATELY here.
-        // Do not wait for the toast promise wrapper to resolve.
+        // Success Logic
         setExcelUrl(excelData.url);
-        setStatus("idle"); 
+        setStatus("idle");
         if (setUploading) setUploading(false);
-        
         return excelData;
 
       } catch (err) {
-        // FIX: Reset status on error here as well to prevent stuck loading state
         setStatus("idle");
         if (setUploading) setUploading(false);
-        throw err; // Re-throw so toast displays the error
+        throw err;
       }
     };
 
-    // Execute Toast
-    // We don't await this block for state management anymore, 
-    // because state management is handled internally within generateWorkflow
     toast.promise(generateWorkflow(), {
-      loading: 'Starting generation engine...',
-      success: 'Spreadsheet created successfully!',
+      loading: 'Generating spreadsheet...',
+      success: 'Spreadsheet ready for preview!',
       error: (err) => err.message || "An unexpected error occurred."
     });
   };
@@ -148,60 +131,26 @@ const GenerateButton = ({
           "disabled:cursor-not-allowed disabled:shadow-none disabled:hover:translate-y-0",
         )}
         aria-label={isLoading ? getLoadingText() : "Generate spreadsheet"}
-        aria-busy={isLoading}
       >
         <div className="flex flex-1 items-center gap-3 px-4">
-          {isLoading ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <FileSpreadsheet className="h-4 w-4" />
-          )}
-
+          {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />}
           <div className="flex flex-col items-start text-left leading-none">
-            <span className="text-sm font-bold tracking-wide">
-              {isLoading ? "Processing" : "Generate"}
-            </span>
-            <span className="text-[10px] font-mono opacity-80 mt-1 uppercase">
-              {isLoading ? getLoadingText() : "Output: .XLSX"}
-            </span>
+            <span className="text-sm font-bold tracking-wide">{isLoading ? "Processing" : "Generate"}</span>
+            <span className="text-[10px] font-mono opacity-80 mt-1 uppercase">{isLoading ? getLoadingText() : "Output: .XLSX"}</span>
           </div>
         </div>
-
-        <div className={cn(
-          "w-[1px] bg-white/20 h-full",
-          isDisabled && "bg-slate-300"
-        )} />
-
-        <div className={cn(
-          "flex w-12 items-center justify-center bg-black/10 transition-colors",
-          "group-hover:bg-black/20",
-          isDisabled && "bg-transparent"
-        )}>
-          {isLoading ? (
-            <Sparkles className="h-4 w-4 animate-pulse text-white/80" />
-          ) : (
-            <ArrowRight className={cn(
-              "h-4 w-4 transition-transform duration-200",
-              "group-hover:translate-x-0.5"
-            )} />
-          )}
+        <div className={cn("w-[1px] bg-white/20 h-full", isDisabled && "bg-slate-300")} />
+        <div className={cn("flex w-12 items-center justify-center bg-black/10 transition-colors", isDisabled && "bg-transparent")}>
+           {isLoading ? <Sparkles className="h-4 w-4 animate-pulse" /> : <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />}
         </div>
       </Button>
-
-      {/* Technical Loading Progress Bar */}
+      
+      {/* Loading Bar */}
       {isLoading && (
-        <div className="mt-2 flex items-center justify-between gap-2 animate-in fade-in duration-300">
-          <div className="relative h-1 w-full overflow-hidden rounded-sm bg-emerald-100 dark:bg-emerald-950/30">
-            <div 
-              className={cn(
-                "h-full w-full origin-left bg-emerald-500 transition-all duration-500",
-                "animate-[progress_1.5s_ease-in-out_infinite]" 
-              )} 
-            />
+        <div className="mt-2 flex items-center justify-between gap-2 animate-in fade-in">
+          <div className="relative h-1 w-full overflow-hidden rounded-sm bg-emerald-100">
+            <div className="h-full w-full origin-left bg-emerald-500 animate-[progress_1.5s_ease-in-out_infinite]" />
           </div>
-          <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 animate-pulse">
-            {status === 'excel' ? '90%' : status === 'saving' ? '60%' : '30%'}
-          </span>
         </div>
       )}
     </div>
