@@ -2,11 +2,12 @@ import { supabase } from "@/lib/supabaseClient";
 import { v4 as uuidv4 } from "uuid";
 import ExcelJS from "exceljs";
 
-
+// Converts "A:A" → "A2:A50" for clean data range detection
 function replaceFullColumnRefs(formulaText, rowCount) {
   return formulaText.replace(/([A-Z]+):\1/g, (_, col) => `${col}2:${col}${rowCount}`);
 }
 
+// Convert number to Excel column letter
 function getColumnLetter(index) {
   let letter = "";
   while (index >= 0) {
@@ -16,112 +17,103 @@ function getColumnLetter(index) {
   return letter;
 }
 
-// API Route (Next.js App Router)
 export async function POST(req) {
-  const { file_schema ,schema, userId, file_read_data } = await req.json();
-  if (!userId || !schema) {
-    return Response.json(
-      { error: "Missing file_schema or schema or user ID" },
-      { status: 400 }
-    );
+  const { file_schema, schema, userId, file_read_data } = await req.json();
+
+  if (!userId || !schema?.columns) {
+    return Response.json({ error: "Missing schema or user ID" }, { status: 400 });
   }
 
   try {
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet("Sheet");
 
-    // Parse schema if it's a string
-    let parsedSchema = schema;
-    if (typeof parsedSchema === "string") {
-      try {
-        parsedSchema = JSON.parse(schema);
-      } catch (err) {
-        return Response.json(
-          { error: "Invalid schema format" },
-          { status: 400 }
-        );
-      }
-    }
+    const parsedSchema = typeof schema === "string" ? JSON.parse(schema) : schema;
+    const columnsFromSchema = parsedSchema.columns || [];
+    const formulas = parsedSchema.formulas || [];
 
-    if (!Array.isArray(parsedSchema.columns)) {
-      return Response.json(
-        { error: "Schema must be an array" },
-        { status: 400 }
-      );
-    }
+    // Separate row-level formulas vs summary formulas
+    const rowFormulaColumns = formulas.filter(f => f?.type === "formula" && f.formulaTemplate);
+    const summaryFormulas = formulas.filter(f => f.label && f.excelFormula);
 
-    if (!parsedSchema.columns || !Array.isArray(parsedSchema.columns)) {
-      return Response.json({ error: "Malformed schema structure" }, { status: 400 });
-    }
+    // Merge all columns
+    const allColumns = [...columnsFromSchema, ...rowFormulaColumns];
 
-    const columns = parsedSchema.columns;
-    const formulas = Array.isArray(parsedSchema.formulas) ? parsedSchema.formulas : [];
-
-    // Define headers from schema
-    const headers = columns.map((col) => ({
+    // Define headers
+    sheet.columns = allColumns.map(col => ({
       header: col.columnName,
       key: col.columnName,
       width: 25,
     }));
 
-    sheet.columns = headers;
-
-    // Add dropdown validations if defined
-    columns.forEach((col, index) => {
+    // Add dropdown validations
+    allColumns.forEach((col, index) => {
       if (col.type === "dropdown" && Array.isArray(col.options)) {
-        sheet.getColumn(index + 1).eachCell((cell) => {
-          cell.dataValidation = {
-            type: "list",
-            allowBlank: true,
-            formulae: [`"${col.options.join(",")}"`],
-          };
+        sheet.getColumn(index + 1).eachCell((cell, rowNumber) => {
+          if (rowNumber > 1) {
+            cell.dataValidation = {
+              type: "list",
+              allowBlank: true,
+              formulae: [`"${col.options.join(",")}"`],
+            };
+          }
         });
       }
     });
 
-    // 🔁 Matching logic function for input data keys
+    // Map original file columns
     const getMappedColumnSource = (columnName) => {
       const match = file_schema?.columns?.find(col => col.columnName === columnName);
-      return match && match.mapFrom ? match.mapFrom : columnName;
+      return match?.mapFrom || columnName;
     };
 
-    let rowCount = 1; // Header is row 1
+    // Add data rows
+    let rowCount = 1;
     if (Array.isArray(file_read_data)) {
-      file_read_data.forEach((row) => {
-        const rowValues = {};
+      file_read_data.forEach((row, rowIndex) => {
+        const excelRow = [];
 
-        columns.forEach((col) => {
-          const targetColumn = col.columnName;
-          const sourceColumn = getMappedColumnSource(targetColumn); 
-          rowValues[targetColumn] = row[sourceColumn] ?? "";
+        allColumns.forEach((col) => {
+          const rowNum = rowIndex + 2;
+
+          if (col.type === "formula" && col.formulaTemplate) {
+            const formula = col.formulaTemplate.replace(/##/g, rowNum);
+            excelRow.push({ formula, result: null });
+          } else {
+            const sourceColumn = getMappedColumnSource(col.columnName);
+            excelRow.push(row[sourceColumn] ?? "");
+          }
         });
 
-        sheet.addRow(rowValues);
+        sheet.addRow(excelRow);
         rowCount++;
       });
     }
 
-    if (Array.isArray(formulas) && formulas.length > 0) {
-      const formulaStartRow = rowCount + 1; // Start after last data row
+    // Insert summary formulas
+    if (summaryFormulas.length > 0) {
+      const formulaStartRow = rowCount + 1;
 
-      formulas.forEach((formula, index) => {
+      summaryFormulas.forEach((formula, index) => {
         const rowNumber = formulaStartRow + index;
 
         const labelCell = sheet.getCell(`A${rowNumber}`);
-        const targetIndex = columns.findIndex(c => c.columnName === formula.columnName);
-        const colLetter = getColumnLetter(targetIndex);
-        const formulaCell = sheet.getCell(`${colLetter}${rowNumber}`);
-        
+        const targetIndex = allColumns.findIndex(c => c.columnName === formula.columnName);
+        const colLetter = getColumnLetter(targetIndex !== -1 ? targetIndex : 1);
+
+        // ✅ Avoid circular reference by placing formula in next column
+        const formulaColLetter = getColumnLetter(targetIndex + 1);
+        const formulaCell = sheet.getCell(`${formulaColLetter}${rowNumber}`);
+
         labelCell.value = formula.label || `Formula ${index + 1}`;
         labelCell.font = { bold: true };
         labelCell.alignment = { vertical: "middle", horizontal: "left" };
-        
+
         const formulaText = replaceFullColumnRefs(formula.excelFormula, rowCount);
-        formulaCell.value = { formula: formulaText, result: 0 };
+        formulaCell.value = { formula: formulaText, result: null };
         formulaCell.font = { bold: true };
         formulaCell.alignment = { vertical: "middle", horizontal: "left" };
 
-        // Optional: styling
         labelCell.fill = {
           type: "pattern",
           pattern: "solid",
@@ -135,38 +127,30 @@ export async function POST(req) {
       });
     }
 
-    // Generate Excel file buffer
     workbook.calcProperties.fullCalcOnLoad = true;
     const buffer = await workbook.xlsx.writeBuffer();
 
-    // Upload to Supabase Storage
     const fileName = `${uuidv4()}_speaksheet.xlsx`;
     const filePath = `${userId}/${fileName}`;
 
     const { error: uploadError } = await supabase.storage
       .from("sheets")
       .upload(filePath, buffer, {
-        contentType:
-          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         upsert: false,
       });
 
-    if (uploadError) {
-      console.error("Upload error", uploadError);
-      throw uploadError;
-    }
+    if (uploadError) throw uploadError;
 
-    // Get public URL
     const { data: publicUrlData } = supabase.storage
       .from("sheets")
       .getPublicUrl(filePath);
 
-    const file_url = publicUrlData?.publicUrl;
-
     return Response.json({
       success: true,
-      url: file_url,
+      url: publicUrlData?.publicUrl || null,
     });
+
   } catch (error) {
     console.error("Excel generation error:", error);
     return Response.json({ error: error.message }, { status: 500 });

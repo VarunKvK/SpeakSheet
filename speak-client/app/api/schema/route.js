@@ -23,6 +23,11 @@ export async function POST(req) {
               "label": "string label to display beside the formula",
               "excelFormula": "Raw Excel Formula string",
               "columnName": "string label of the columName that need to be taken"
+            },
+            {
+              "columnName": "Flag",
+              "type": "formula",
+              "formulaTemplate": "=IF(C##>1000, \"High\", \"Low\")"
             }
           ]
         }
@@ -35,7 +40,7 @@ export async function POST(req) {
         `;
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-2.5-pro",
       contents: systemPrompt,
     });
     const text = response.text;

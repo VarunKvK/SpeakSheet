@@ -120,6 +120,7 @@ export const SchemaPreview = ({ schema }) => {
   if (!columns.length && !formulas.length) {
     return <EmptyState />;
   }
+  console.log(schema)
 
   return (
     <div className="mt-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -189,7 +190,6 @@ export const SchemaPreview = ({ schema }) => {
             </div>
           ))}
         </div>
-
         {/* --- Formulas Section --- */}
         {formulas.length > 0 && (
           <div className="border-t-2 border-emerald-100 dark:border-emerald-900/30 bg-purple-50/10">
@@ -205,7 +205,7 @@ export const SchemaPreview = ({ schema }) => {
                       <span className="text-[10px] text-muted-foreground truncate">Autocalculated</span>
                     </div>
                     <code className="rounded-sm border border-purple-200 bg-purple-50 px-2 py-1 text-xs font-mono text-purple-700 truncate max-w-full sm:max-w-[50%]">
-                      {f.excelFormula || f.formula || "=N/A"}
+                      {f.excelFormula || f.formula || f.formulaTemplate || "=N/A"}
                     </code>
                  </div>
                ))}

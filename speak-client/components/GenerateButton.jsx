@@ -57,6 +57,7 @@ const GenerateButton = ({
         
         if (!generatedSchema) throw new Error("AI could not generate a valid structure.");
         setSchema(generatedSchema);
+        console.log("Generated Schema:", generatedSchema);
 
         // --- Step B: Save to Database (ONLY IF USER IS LOGGED IN) ---
         let savedData = [];

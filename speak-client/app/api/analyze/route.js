@@ -41,7 +41,7 @@ export async function POST(req) {
         ${JSON.stringify(filePreviewData).slice(0, 4000)}`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-2.5-pro",
       contents: systemPrompt,
     });
     const rawSchema = response.text;
