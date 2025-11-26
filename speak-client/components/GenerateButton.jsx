@@ -54,38 +54,37 @@ const GenerateButton = ({
         // --- Step A: Generate Schema (AI) ---
         setStatus("schema");
         const generatedSchema = await generateSchema({ prompt });
-        
+
         if (!generatedSchema) throw new Error("AI could not generate a valid structure.");
         setSchema(generatedSchema);
         console.log("Generated Schema:", generatedSchema);
-
         // --- Step B: Save to Database (ONLY IF USER IS LOGGED IN) ---
         let savedData = [];
         if (user && user.id) {
           setStatus("saving");
           // Save to DB for history
-          const result = await saveSheetData({ 
-            userId: user.id, 
-            prompt: prompt || "Uploaded File Generation", 
-            schema: generatedSchema, 
-            file_schema: fileSchema || null, 
+          const result = await saveSheetData({
+            userId: user.id,
+            prompt: prompt || "Uploaded File Generation",
+            schema: generatedSchema,
+            file_schema: fileSchema || null,
             fileUrl: fileUrl || null
           });
           savedData = result;
         } else {
-           // Guest Mode: Skip DB save, mock the data structure needed for next step
-           savedData = [{
-             file_schema: fileSchema || null,
-             schema: generatedSchema
-           }];
+          // Guest Mode: Skip DB save, mock the data structure needed for next step
+          savedData = [{
+            file_schema: fileSchema || null,
+            schema: generatedSchema
+          }];
         }
 
         // --- Step C: Generate Physical Excel File ---
         setStatus("excel");
-        const excelData = await generateExcel({ 
+        const excelData = await generateExcel({
           // If we saved, use saved data. If guest, use passed props/generated schema
-          file_schema: savedData[0]?.file_schema || fileSchema, 
-          schema: savedData[0]?.schema || generatedSchema, 
+          file_schema: savedData[0]?.file_schema || fileSchema,
+          schema: savedData[0]?.schema || generatedSchema,
           userId: user ? user.id : "guest", // Pass 'guest' string if backend requires a string
           file_read_data: readfile || null
         });
@@ -142,10 +141,10 @@ const GenerateButton = ({
         </div>
         <div className={cn("w-[1px] bg-white/20 h-full", isDisabled && "bg-slate-300")} />
         <div className={cn("flex w-12 items-center justify-center bg-black/10 transition-colors", isDisabled && "bg-transparent")}>
-           {isLoading ? <Sparkles className="h-4 w-4 animate-pulse" /> : <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />}
+          {isLoading ? <Sparkles className="h-4 w-4 animate-pulse" /> : <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />}
         </div>
       </Button>
-      
+
       {/* Loading Bar */}
       {isLoading && (
         <div className="mt-2 flex items-center justify-between gap-2 animate-in fade-in">

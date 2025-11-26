@@ -1,7 +1,7 @@
 import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs'
 import { NextResponse } from 'next/server'
 
-export async function middleware(req) {
+export async function proxy(req) {
   const res = NextResponse.next()
   
   // This line fixes the cookie session sync between Server and Client

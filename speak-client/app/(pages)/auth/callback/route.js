@@ -1,4 +1,4 @@
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
+import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 
@@ -7,13 +7,35 @@ export async function GET(request) {
   const code = requestUrl.searchParams.get('code')
 
   if (code) {
-    const cookieStore = cookies()
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
-    
-    // Exchange the code for a session
+    const cookieStore = await cookies()
+
+    // Create a Supabase client with cookie management
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll()
+          },
+          setAll(cookiesToSet) {
+            try {
+              cookiesToSet.forEach(({ name, value }) =>
+                cookieStore.set(name, value)
+              )
+            } catch {
+              // If called from a Server Component, ignore.
+              // Middleware can refresh sessions automatically.
+            }
+          },
+        },
+      }
+    )
+
+    // Exchange the code for a Supabase session (sets cookie)
     await supabase.auth.exchangeCodeForSession(code)
   }
 
-  // URL to redirect to after sign in process completes
+  // Redirect after sign in
   return NextResponse.redirect(`${requestUrl.origin}/dashboard`)
 }

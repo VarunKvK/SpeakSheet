@@ -120,8 +120,7 @@ export const SchemaPreview = ({ schema }) => {
   if (!columns.length && !formulas.length) {
     return <EmptyState />;
   }
-  console.log(schema)
-
+  
   return (
     <div className="mt-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Main Container */}
