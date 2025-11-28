@@ -102,8 +102,8 @@ export default function LandingPage() {
                 </div>
                 
                 <Button asChild size="sm" className="rounded-sm bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm">
-                  <Link href="/dashboard">
-                    Dashboard <ArrowRight className="ml-2 h-4 w-4" />
+                  <Link href="/workspace">
+                    Workspace <ArrowRight className="ml-2 h-4 w-4" />
                   </Link>
                 </Button>
               </div>
@@ -114,7 +114,7 @@ export default function LandingPage() {
                   Log in
                 </Link>
                 <Button asChild size="sm" className="rounded-sm bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm">
-                  <Link href="/dashboard">
+                  <Link href="/workspace">
                     Get Started <ArrowRight className="ml-2 h-4 w-4" />
                   </Link>
                 </Button>
@@ -157,13 +157,13 @@ export default function LandingPage() {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16 animate-in fade-in slide-in-from-bottom-10 duration-1000">
             {user ? (
                <Button asChild size="lg" className="h-12 px-8 rounded-sm bg-emerald-600 hover:bg-emerald-700 text-white text-base shadow-lg shadow-emerald-500/20 transition-all hover:-translate-y-0.5">
-                 <Link href="/dashboard">
+                 <Link href="/workspace">
                    Go to Workspace <ArrowRight className="ml-2 h-5 w-5" />
                  </Link>
                </Button>
             ) : (
                <Button asChild size="lg" className="h-12 px-8 rounded-sm bg-emerald-600 hover:bg-emerald-700 text-white text-base shadow-lg shadow-emerald-500/20 transition-all hover:-translate-y-0.5">
-                 <Link href="/dashboard">
+                 <Link href="/workspace">
                    Generate Sheet Free
                  </Link>
                </Button>
@@ -395,7 +395,7 @@ export default function LandingPage() {
             Create your first structured spreadsheet in the next 30 seconds. No signup required to try.
           </p>
           <Button asChild size="lg" className="h-14 px-10 rounded-sm bg-emerald-600 hover:bg-emerald-700 text-white text-lg shadow-xl shadow-emerald-600/20">
-            <Link href="/dashboard">
+            <Link href="/workspace">
               Start Generating Now <ArrowRight className="ml-2 h-5 w-5" />
             </Link>
           </Button>

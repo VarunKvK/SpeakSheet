@@ -178,7 +178,6 @@ const Dashboard = () => {
     }
     try {
       const result = await googleSheetsFlow(googleToken, schema ,fileSchema, readfile);
-      console.log("Hello")
       window.open(result, '_blank');
       toast.success("Spreadsheet created!");
     } catch (err) {

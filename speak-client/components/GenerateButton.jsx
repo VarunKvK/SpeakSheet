@@ -5,9 +5,9 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 
-import { generateSchema } from "@/app/(pages)/dashboard/functions/generateSchema";
-import { saveSheetData } from "@/app/(pages)/dashboard/functions/saveSheetData";
-import { generateExcel } from "@/app/(pages)/dashboard/functions/generateExcelSheet";
+import { generateSchema } from "@/app/(pages)/workspace/functions/generateSchema";
+import { saveSheetData } from "@/app/(pages)/workspace/functions/saveSheetData";
+import { generateExcel } from "@/app/(pages)/workspace/functions/generateExcelSheet";
 import { Button } from "./ui/button";
 
 const GenerateButton = ({

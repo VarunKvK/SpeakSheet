@@ -37,5 +37,5 @@ export async function GET(request) {
   }
 
   // Redirect after sign in
-  return NextResponse.redirect(`${requestUrl.origin}/dashboard`)
+  return NextResponse.redirect(`${requestUrl.origin}/workspace`)
 }

@@ -19,8 +19,8 @@ import { cn } from "@/lib/utils";
 
 // Logic imports
 import { uploadToSupabase } from "@/lib/uploadToSupabase";
-import { readFileData } from "@/app/(pages)/dashboard/functions/readUploadedFile";
-import { analyzeUploadedFile } from "@/app/(pages)/dashboard/functions/analyzeUploadedFile";
+import { readFileData } from "@/app/(pages)/workspace/functions/readUploadedFile";
+import { analyzeUploadedFile } from "@/app/(pages)/workspace/functions/analyzeUploadedFile";
 
 // --- Constants ---
 const MAX_FILE_SIZE_MB = 10;
@@ -115,7 +115,7 @@ const PromptInput = ({
     try {
       // 3. Upload Layer (Supabase)
       const uploadResult = await uploadToSupabase(fileToUpload, user.id);
-      
+
       if (!uploadResult?.publicUrl) {
         throw new Error("Upload failed: No public URL returned.");
       }
@@ -127,7 +127,7 @@ const PromptInput = ({
 
       // 5. Intelligence Layer (Gemini/Analysis)
       const schema = await analyzeUploadedFile(value, fileData);
-      
+
       if (!schema) throw new Error("AI Analysis failed to generate schema.");
 
       // 6. Success State Update
@@ -141,7 +141,7 @@ const PromptInput = ({
 
     } catch (err) {
       console.error("File Pipeline Error:", err);
-      
+
       // Granular Error Messaging
       let errorMessage = "Something went wrong processing your file.";
       const msg = err.message || "";
@@ -151,9 +151,9 @@ const PromptInput = ({
       else if (msg.includes("AI")) errorMessage = "AI Analysis failed. Please try again.";
 
       toast.error("Process Failed", { description: errorMessage });
-      
+
       // Rollback state on failure
-      handleRemoveFile(); 
+      handleRemoveFile();
     } finally {
       setUploading(false);
       // Reset input value to allow selecting the same file again if failed
@@ -251,21 +251,21 @@ const PromptInput = ({
                 {/* Decorative corners */}
                 <div className="absolute top-0 left-0 w-2 h-2 border-t-2 border-l-2 border-emerald-500" />
                 <div className="absolute bottom-0 right-0 w-2 h-2 border-b-2 border-r-2 border-emerald-500" />
-                
+
                 <div className="flex h-10 w-10 items-center justify-center rounded-sm bg-emerald-500 shadow-sm">
                   <FileSpreadsheet className="h-5 w-5 text-white" />
                 </div>
-                
+
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-foreground truncate flex items-center gap-2">
                     {getFileName()}
                     <FileCheck className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                   </p>
                   <p className="text-xs text-muted-foreground font-mono">
-                   {formatFileSize(getFileSize())}
+                    {formatFileSize(getFileSize())}
                   </p>
                 </div>
-                
+
                 <Button
                   type="button"
                   variant="ghost"
@@ -302,7 +302,7 @@ const PromptInput = ({
             onBlur={() => setIsFocused(false)}
             maxLength={maxLength}
             aria-invalid={!!error || isOverLimit}
-            disabled={uploading} 
+            disabled={uploading}
           />
 
           {/* Bottom Controls */}
@@ -325,13 +325,13 @@ const PromptInput = ({
                 <span className="text-sm font-medium">Add File</span>
               </Button>
             </div>
-            
+
             <div
               className={cn(
                 "flex items-center gap-2 rounded-sm px-3 py-1.5 text-xs font-mono font-semibold",
                 "border shadow-sm transition-all duration-200",
-                isOverLimit 
-                  ? "bg-red-50 dark:bg-red-950/50 border-red-300 dark:border-red-800 text-red-700 dark:text-red-400" 
+                isOverLimit
+                  ? "bg-red-50 dark:bg-red-950/50 border-red-300 dark:border-red-800 text-red-700 dark:text-red-400"
                   : "bg-white dark:bg-background border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400"
               )}
             >
@@ -404,9 +404,9 @@ const PromptInput = ({
           </div>
           <div className="flex flex-wrap gap-2">
             {[
-               { label: "Employee Tracker", prompt: "Track employee data: Name, Department, Salary, Experience, Start Date" },
-               { label: "Inventory System", prompt: "Inventory system with Product Name, SKU, Quantity, Price" },
-               { label: "Student Grades", prompt: "Student grades: Student Name, Subject, Score, Grade Level" }
+              { label: "Employee Tracker", prompt: "Track employee data: Name, Department, Salary, Experience, Start Date" },
+              { label: "Inventory System", prompt: "Inventory system with Product Name, SKU, Quantity, Price" },
+              { label: "Student Grades", prompt: "Student grades: Student Name, Subject, Score, Grade Level" }
             ].map((item, i) => (
               <Button
                 key={i}
