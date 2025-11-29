@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { uploadToSupabase } from "@/lib/uploadToSupabase";
 import { readFileData } from "@/app/(pages)/workspace/functions/readUploadedFile";
 import { analyzeUploadedFile } from "@/app/(pages)/workspace/functions/analyzeUploadedFile";
+import { supabase } from "@/lib/supabaseClient";
 
 // --- Constants ---
 const MAX_FILE_SIZE_MB = 10;
@@ -54,6 +55,7 @@ const PromptInput = ({
   setReadFile,
   user,
   setFileSchema,
+  profile,
 }) => {
   const [isFocused, setIsFocused] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -93,11 +95,34 @@ const PromptInput = ({
   const handleFileSelect = async (selectedFile) => {
     if (!selectedFile) return;
 
+    // --- QUOTA CHECK ---
+    if (profile && !profile.is_pro) {
+      if (profile.files_uploaded >= 1) {
+        toast.error("Free users can only upload 1 file.", {
+          description: "Upgrade to Pro for unlimited uploads.",
+        });
+        // Reset input so they can try again later
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        return;
+      }
+    }
+
     // 1. Validation Layer
     if (!validateFile(selectedFile)) {
-      // Reset input so user can try selecting the same file again if they fixed it
       if (fileInputRef.current) fileInputRef.current.value = "";
       return;
+    }
+
+    // --- QUOTA CHECK ---
+    if (profile && !profile.is_pro) {
+      if (profile.files_uploaded >= 1) {
+        toast.error("Free users can only upload 1 file.", {
+          description: "Upgrade to Pro for unlimited uploads.",
+        });
+        // Reset input so they can try again later
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        return;
+      }
     }
 
     // 2. Preparation Layer
@@ -134,6 +159,19 @@ const PromptInput = ({
       setFile(uploadResult.publicUrl); // Store URL for persistence
       setReadFile(fileData);
       setFileSchema(schema);
+
+      // 7. Update Profile
+      if (profile) {
+        const { error } = await supabase
+          .from("profiles")
+          .update({ files_uploaded: (profile.files_uploaded || 0) + 1 })
+          .eq("id", user.id);
+
+        if (error) {
+          console.error("Failed to update profile:", error);
+          toast.error("Failed to update profile.");
+        }
+      }
 
       toast.success("Complete", {
         description: "File uploaded and analyzed successfully.",
@@ -324,6 +362,11 @@ const PromptInput = ({
                 <Plus className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                 <span className="text-sm font-medium">Add File</span>
               </Button>
+              {user && !profile?.is_pro && (
+                <p className="text-xs text-emerald-700">
+                  Free plan: {1 - (profile?.files_uploaded || 0)} file upload remaining
+                </p>
+              )}
             </div>
 
             <div

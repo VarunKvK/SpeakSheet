@@ -17,8 +17,9 @@ import {
   Loader2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button"; 
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabaseClient"; // Ensure this path matches your project
+import { toast } from "sonner";
 
 // --- Shared Design Elements ---
 
@@ -75,6 +76,30 @@ export default function LandingPage() {
     window.location.reload();
   };
 
+  //LemonSqueezy
+  // const handleUpgrade = async () => {
+  //   try {
+  //     const res = await fetch("/api/payment/checkout", { method: "POST" });
+  //     const data = await res.json();
+
+  //     if (data.url) {
+  //       window.location.href = data.url; // Redirect to Lemon Squeezy
+  //     } else {
+  //       console.log("Failed to create checkout")
+  //     }
+  //   } catch (e) {
+  //     console.error(e);
+  //   }
+  // };
+
+  const handleUpgrade = () => {
+    const productId = "0a08efac-6bd4-4fed-bcf3-4c29051df605";
+    // const productId = process.env.NEXT_PUBLIC_POLAR_PRODUCT_ID;
+    const email = encodeURIComponent(user.email);
+    const externalId = encodeURIComponent(user.id);
+
+    window.location.href = `/api/payment/checkout?products=${productId}&customerEmail=${email}&customerExternalId=${externalId}`;
+  };
   return (
     <div className="min-h-screen bg-background text-foreground font-sans selection:bg-emerald-100 selection:text-emerald-900">
 
@@ -100,10 +125,16 @@ export default function LandingPage() {
                   <User className="h-3.5 w-3.5" />
                   <span className="max-w-[120px] truncate">{user.email}</span>
                 </div>
-                
+
                 <Button asChild size="sm" className="rounded-sm bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm">
                   <Link href="/workspace">
                     Workspace <ArrowRight className="ml-2 h-4 w-4" />
+                  </Link>
+                </Button>
+
+                <Button asChild className="rounded-sm bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm">
+                  <Link href="/pricing">
+                    Upgrade to Pro
                   </Link>
                 </Button>
               </div>
@@ -156,19 +187,19 @@ export default function LandingPage() {
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16 animate-in fade-in slide-in-from-bottom-10 duration-1000">
             {user ? (
-               <Button asChild size="lg" className="h-12 px-8 rounded-sm bg-emerald-600 hover:bg-emerald-700 text-white text-base shadow-lg shadow-emerald-500/20 transition-all hover:-translate-y-0.5">
-                 <Link href="/workspace">
-                   Go to Workspace <ArrowRight className="ml-2 h-5 w-5" />
-                 </Link>
-               </Button>
+              <Button asChild size="lg" className="h-12 px-8 rounded-sm bg-emerald-600 hover:bg-emerald-700 text-white text-base shadow-lg shadow-emerald-500/20 transition-all hover:-translate-y-0.5">
+                <Link href="/workspace">
+                  Go to Workspace <ArrowRight className="ml-2 h-5 w-5" />
+                </Link>
+              </Button>
             ) : (
-               <Button asChild size="lg" className="h-12 px-8 rounded-sm bg-emerald-600 hover:bg-emerald-700 text-white text-base shadow-lg shadow-emerald-500/20 transition-all hover:-translate-y-0.5">
-                 <Link href="/workspace">
-                   Generate Sheet Free
-                 </Link>
-               </Button>
+              <Button asChild size="lg" className="h-12 px-8 rounded-sm bg-emerald-600 hover:bg-emerald-700 text-white text-base shadow-lg shadow-emerald-500/20 transition-all hover:-translate-y-0.5">
+                <Link href="/workspace">
+                  Generate Sheet Free
+                </Link>
+              </Button>
             )}
-            
+
             <Button asChild variant="outline" size="lg" className="h-12 px-8 rounded-sm border-2 border-emerald-100 bg-transparent hover:bg-emerald-50 hover:text-emerald-700 text-base">
               <Link href="#templates">
                 View Templates

@@ -41,13 +41,7 @@ export default function Login() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          // 🔑 KEY FIX: Include 'openid email profile' AND your custom scope
-          // scopes: "openid email profile https://www.googleapis.com/auth/spreadsheets",
           scopes: "openid email profile",
-          // queryParams: {
-          //   access_type: "offline",
-          //   prompt: "consent",
-          // },
           redirectTo: `${window.location.origin}/auth/callback`,
         },
       });
