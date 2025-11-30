@@ -9,7 +9,9 @@ import confetti from "canvas-confetti";
 export default function SuccessPageContent() {
   const params = useSearchParams();
   const router = useRouter();
-  const checkoutId = params.get("checkoutId");
+  console.log(params);
+  const checkoutId = params.get("checkout_id") || params.get("checkoutId") || null;
+
 
   // State for copying the ID
   const [copied, setCopied] = useState(false);
@@ -24,7 +26,7 @@ export default function SuccessPageContent() {
       return Math.random() * (max - min) + min;
     };
 
-    const interval= setInterval(function () {
+    const interval = setInterval(function () {
       const timeLeft = animationEnd - Date.now();
 
       if (timeLeft <= 0) {
@@ -32,7 +34,7 @@ export default function SuccessPageContent() {
       }
 
       const particleCount = 50 * (timeLeft / duration);
-      
+
       confetti({
         ...defaults,
         particleCount,
@@ -59,7 +61,7 @@ export default function SuccessPageContent() {
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="max-w-md w-full bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
-        
+
         {/* Header Section */}
         <div className="bg-green-50 p-8 text-center">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100 mb-4 shadow-sm ring-4 ring-white">
@@ -73,7 +75,7 @@ export default function SuccessPageContent() {
 
         {/* Content Section */}
         <div className="p-8 space-y-6">
-          
+
           {/* Transaction Receipt Box */}
           <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
             <div className="flex items-center justify-between mb-1">
@@ -84,7 +86,7 @@ export default function SuccessPageContent() {
               <code className="text-sm text-gray-700 font-mono truncate mr-2">
                 {checkoutId || "Processing..."}
               </code>
-              <button 
+              <button
                 onClick={handleCopyId}
                 className="text-gray-400 hover:text-gray-600 transition-colors"
                 title="Copy ID"
@@ -115,15 +117,15 @@ export default function SuccessPageContent() {
 
           {/* Action Buttons */}
           <div className="space-y-3 pt-2">
-            <Link 
-              href="/workspace" 
+            <Link
+              href="/workspace"
               className="w-full flex items-center justify-center gap-2 bg-black text-white hover:bg-gray-800 transition-all py-3 rounded-lg font-medium shadow-lg shadow-gray-200 hover:shadow-xl transform hover:-translate-y-0.5 duration-200"
             >
               <FileSpreadsheet className="h-4 w-4" />
               Go to Dashboard
             </Link>
-            
-            <Link 
+
+            <Link
               href="/"
               className="w-full flex items-center justify-center gap-2 bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 transition-colors py-3 rounded-lg font-medium"
             >

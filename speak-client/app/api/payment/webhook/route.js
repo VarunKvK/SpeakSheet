@@ -47,6 +47,7 @@ const webhookHandler = Webhooks({
 });
 
 export const POST = async (req) => {
+  console.log("Webhook Request Hit Server");
   console.log("Webhook POST request received");
   return webhookHandler(req);
 };
