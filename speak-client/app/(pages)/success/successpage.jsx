@@ -6,9 +6,10 @@ import Link from "next/link";
 import { Check, ArrowRight, Copy, FileSpreadsheet, Download } from "lucide-react";
 import confetti from "canvas-confetti";
 
-export default function SuccessPageContent() {
+export default function SuccessPage() {
   const params = useSearchParams();
   const router = useRouter();
+  console.log(params);
   const checkoutId = params.get("checkoutId");
 
 

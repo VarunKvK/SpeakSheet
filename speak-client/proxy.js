@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 
 export async function proxy(req) {
   const res = NextResponse.next()
-  
+
   // This line fixes the cookie session sync between Server and Client
   const supabase = createMiddlewareClient({ req, res })
   const { data: { session } } = await supabase.auth.getSession()
@@ -18,7 +18,7 @@ export async function proxy(req) {
   // --- RULE 2: Guest Access ---
   // We do NOT block /dashboard here. 
   // Guests are allowed to visit /dashboard to generate content.
-  
+
   return res
 }
 
