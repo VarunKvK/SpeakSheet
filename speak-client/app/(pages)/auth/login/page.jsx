@@ -26,7 +26,7 @@ export default function Login() {
 
     // 2. Real-time Redirect
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_IN" && session) {
+      if ( session) {
         router.replace("/");
       }
     });
