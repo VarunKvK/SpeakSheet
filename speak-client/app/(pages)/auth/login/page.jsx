@@ -17,7 +17,7 @@ export default function Login() {
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        router.replace("/workspace");
+        router.replace("/");
       } else {
         setCheckingSession(false);
       }
@@ -27,7 +27,7 @@ export default function Login() {
     // 2. Real-time Redirect
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_IN" && session) {
-        router.replace("/workspace");
+        router.replace("/");
       }
     });
 
