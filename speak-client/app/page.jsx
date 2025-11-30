@@ -185,12 +185,6 @@ export default function LandingPage() {
                 </Link>
               </Button>
             )}
-
-            <Button asChild variant="outline" size="lg" className="h-12 px-8 rounded-sm border-2 border-emerald-100 bg-transparent hover:bg-emerald-50 hover:text-emerald-700 text-base">
-              <Link href="#templates">
-                View Templates
-              </Link>
-            </Button>
           </div>
 
           {/* Hero Visual / Product Demo Mockup */}
@@ -304,9 +298,6 @@ export default function LandingPage() {
               <h2 className="text-3xl font-bold tracking-tight mb-2">What will you organize today?</h2>
               <p className="text-emerald-200/80">Select a use case or describe your own.</p>
             </div>
-            <Button variant="outline" className="rounded-sm border-emerald-400 text-emerald-100 hover:bg-emerald-800 hover:text-white">
-              See all examples
-            </Button>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -430,9 +421,7 @@ export default function LandingPage() {
             © {new Date().getFullYear()} SpeakSheet. All rights reserved.
           </p>
           <div className="flex gap-6 text-sm text-muted-foreground">
-            <Link href="#" className="hover:text-emerald-600">Privacy</Link>
-            <Link href="#" className="hover:text-emerald-600">Terms</Link>
-            <Link href="#" className="hover:text-emerald-600">Twitter</Link>
+            <Link href="https://x.com/NotVarunKV" className="hover:text-emerald-600">Twitter</Link>
           </div>
         </div>
       </footer>

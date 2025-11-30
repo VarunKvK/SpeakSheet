@@ -26,6 +26,8 @@ export default function PricingPage() {
         const email = encodeURIComponent(user.email);
         const externalId = encodeURIComponent(user.id);
 
+        console.log(email, externalId);
+
         window.location.href = `/api/payment/checkout?products=${productId}&customerEmail=${email}&customerExternalId=${externalId}`;
     };
 

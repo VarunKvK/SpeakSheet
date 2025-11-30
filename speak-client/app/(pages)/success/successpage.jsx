@@ -9,8 +9,7 @@ import confetti from "canvas-confetti";
 export default function SuccessPageContent() {
   const params = useSearchParams();
   const router = useRouter();
-  console.log(params);
-  const checkoutId = params.get("checkout_id") || params.get("checkoutId") || null;
+  const checkoutId = params.get("checkoutId");
 
 
   // State for copying the ID

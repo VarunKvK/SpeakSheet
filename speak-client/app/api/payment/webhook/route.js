@@ -7,17 +7,18 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY // service role key from Supabase settings
 );
 
-const webhookHandler = Webhooks({
+export const POST = Webhooks({
   webhookSecret: process.env.POLAR_WEBHOOK_SECRET,
   onPayload: async (payload) => {
+
     console.log("Webhook payload received:", payload.type);
 
     if (payload.type === "subscription.active" || payload.type === "order.created" || payload.type === "order.paid") {
       const customer = payload.data.customer;
       // Polar uses snake_case for API responses
-      const userId = customer?.external_id || customer?.metadata?.userId;
-      const customerEmail = customer?.email;
-      const customerId = customer?.id;
+      const userId = customer.externalId;
+      const customerEmail = customer.email;
+      const customerId = customer.id;
 
       console.log("Processing webhook for user:", userId);
 
@@ -37,17 +38,7 @@ const webhookHandler = Webhooks({
         })
         .eq("id", userId);
 
-      if (error) {
-        console.error("Supabase update error:", error);
-      } else {
-        console.log("Successfully updated profile for user:", userId);
-      }
+      if (error) console.error("Supabase update error:", error);
     }
   },
 });
-
-export const POST = async (req) => {
-  console.log("Webhook Request Hit Server");
-  console.log("Webhook POST request received");
-  return webhookHandler(req);
-};
