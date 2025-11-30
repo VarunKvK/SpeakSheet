@@ -14,9 +14,6 @@ export default function PricingPage() {
     const handleUpgrade = () => {
         setLoading(true);
 
-        // Hardcoded ID as requested
-        const productId = "0a08efac-6bd4-4fed-bcf3-4c29051df605";
-
         if (!user) {
             console.error("User session not found");
             setLoading(false);
@@ -28,7 +25,7 @@ export default function PricingPage() {
 
         console.log(email, externalId);
 
-        window.location.href = `/api/payment/checkout?products=${productId}&customerEmail=${email}&customerExternalId=${externalId}`;
+        window.location.href = `/api/payment/checkout?products=${process.env.POLAR_PRODUCT_ID}&customerEmail=${email}&customerExternalId=${externalId}`;
     };
 
     return (
