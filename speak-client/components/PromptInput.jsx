@@ -98,9 +98,6 @@ const PromptInput = ({
     // --- QUOTA CHECK ---
     if (profile && !profile.is_pro) {
       if (profile.files_uploaded >= 1) {
-        toast.error("Free users can only upload 1 file.", {
-          description: "Upgrade to Pro for unlimited uploads.",
-        });
         // Reset input so they can try again later
         if (fileInputRef.current) fileInputRef.current.value = "";
         return;
@@ -116,9 +113,6 @@ const PromptInput = ({
     // --- QUOTA CHECK ---
     if (profile && !profile.is_pro) {
       if (profile.files_uploaded >= 1) {
-        toast.error("Free users can only upload 1 file.", {
-          description: "Upgrade to Pro for unlimited uploads.",
-        });
         // Reset input so they can try again later
         if (fileInputRef.current) fileInputRef.current.value = "";
         return;
