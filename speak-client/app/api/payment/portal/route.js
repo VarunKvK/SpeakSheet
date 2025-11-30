@@ -8,5 +8,5 @@ export const GET = CustomerPortal({
     return "cus_123"; 
   },
   returnUrl: process.env.NEXT_PUBLIC_APP_URL,
-  server: "production",//production
+  server: "sandbox",//production
 });
