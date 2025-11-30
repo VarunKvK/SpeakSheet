@@ -1,3 +1,4 @@
+import { CustomerPortal } from "@polar-sh/nextjs";
 
 
 export const GET = CustomerPortal({
