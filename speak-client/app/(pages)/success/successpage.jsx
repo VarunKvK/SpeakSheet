@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Check, ArrowRight, Copy, FileSpreadsheet, Download } from "lucide-react";
 import confetti from "canvas-confetti";
 
-export default function SuccessPage() {
+export default function SuccessPageContent() {
   const params = useSearchParams();
   const router = useRouter();
   console.log(params);
