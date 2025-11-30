@@ -25,7 +25,7 @@ export default function PricingPage() {
 
         console.log(email, externalId);
 
-        window.location.href = `/api/payment/checkout?products=${process.env.POLAR_PRODUCT_ID}&customerEmail=${email}&customerExternalId=${externalId}`;
+        window.location.href = `/api/payment/checkout?products=${process.env.NEXT_PUBLIC_POLAR_PRODUCT_ID}&customerEmail=${email}&customerExternalId=${externalId}`;
     };
 
     return (
