@@ -11,9 +11,6 @@ export default function PricingPage() {
     const [loading, setLoading] = useState(false);
     const { user, loading: authLoading } = useAuth();
 
-    // Auth check logic is now handled by AuthProvider
-
-
     const handleUpgrade = () => {
         setLoading(true);
 

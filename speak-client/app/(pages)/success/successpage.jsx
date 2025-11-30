@@ -9,8 +9,8 @@ import confetti from "canvas-confetti";
 export default function SuccessPageContent() {
   const params = useSearchParams();
   const router = useRouter();
-  const checkoutId = params.get("checkout_id");
-  
+  const checkoutId = params.get("checkoutId");
+
   // State for copying the ID
   const [copied, setCopied] = useState(false);
 
@@ -116,7 +116,7 @@ export default function SuccessPageContent() {
           {/* Action Buttons */}
           <div className="space-y-3 pt-2">
             <Link 
-              href="/dashboard" 
+              href="/workspace" 
               className="w-full flex items-center justify-center gap-2 bg-black text-white hover:bg-gray-800 transition-all py-3 rounded-lg font-medium shadow-lg shadow-gray-200 hover:shadow-xl transform hover:-translate-y-0.5 duration-200"
             >
               <FileSpreadsheet className="h-4 w-4" />

@@ -1,10 +1,16 @@
 import { Checkout } from "@polar-sh/nextjs";
 
-export const GET = Checkout({
-  accessToken: process.env.POLAR_ACCESS_TOKEN,
-  successUrl: process.env.POLAR_SUCCESS_URL,
-  returnUrl: process.env.NEXT_PUBLIC_APP_URL, // optional back button
-//   server: "production", // use 'sandbox' for testing, omit or 'production' for live
-  server: "sandbox", // use 'sandbox' for testing, omit or 'production' for live
-  theme: "dark",     // optional theme override
-});
+export async function GET(req) {
+  console.log("Checkout request received");
+  console.log(req);
+  const url = new URL(req.url);
+  const origin = url.origin;
+
+  return Checkout({
+    accessToken: process.env.POLAR_ACCESS_TOKEN,
+    successUrl: `${origin}/success`, // Polar will append checkout_id
+    returnUrl: origin,
+    server: "sandbox",
+    theme: "dark",
+  })(req);
+}
