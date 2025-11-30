@@ -19,6 +19,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/components/AuthProvider";
 
 // Child Components
 import GenerateButton from "@/components/GenerateButton";
@@ -30,8 +31,7 @@ const Dashboard = () => {
   const router = useRouter();
 
   // --- 1. State Management ---
-  const [user, setUser] = useState(null);
-  const [loadingUser, setLoadingUser] = useState(true);
+  const { user, session, loading: loadingUser } = useAuth();
   const [profile, setProfile] = useState(null);
 
   // Input State
@@ -56,50 +56,32 @@ const Dashboard = () => {
   const isLimitReached = user && !isPro && downloadsUsed >= MAX_DOWNLOADS;
 
   // --- 3. Auth & Initialization ---
+  // --- 3. Auth & Initialization ---
   useEffect(() => {
-    const initSession = async () => {
-      try {
-        setLoadingUser(true);
-        const { data: { session }, error } = await supabase.auth.getSession();
-        console.log("Provider token:", session?.provider_token);
-        // console.log("Scopes:", session?.user?.app_metadata);
-        if (error) console.error("Auth error:", error);
+    if (session?.provider_token) {
+      setGoogleToken(session.provider_token);
+    }
 
-        if (session) {
-          setUser(session.user);
-          if (session?.provider_token) {
-            setGoogleToken(session.provider_token);
-          }
+    if (user) {
+      // Restore guest work from localStorage if available
+      const savedWork = localStorage.getItem("guest_work_cache");
+      if (savedWork) {
+        try {
+          const parsed = JSON.parse(savedWork);
+          if (parsed.prompt) setPrompt(parsed.prompt);
+          if (parsed.schema) setSchema(parsed.schema);
+          if (parsed.excelUrl) setExcelUrl(parsed.excelUrl);
+          if (parsed.fileSchema) setFileSchema(parsed.fileSchema);
+          if (parsed.readfile) setReadFile(parsed.readfile);
 
-          // Restore guest work from localStorage if available
-          const savedWork = localStorage.getItem("guest_work_cache");
-          if (savedWork) {
-            try {
-              const parsed = JSON.parse(savedWork);
-              if (parsed.prompt) setPrompt(parsed.prompt);
-              if (parsed.schema) setSchema(parsed.schema);
-              if (parsed.excelUrl) setExcelUrl(parsed.excelUrl);
-              if (parsed.fileSchema) setFileSchema(parsed.fileSchema);
-              if (parsed.readfile) setReadFile(parsed.readfile);
-
-              toast.success("Session restored", { description: "Your previous work is loaded." });
-              localStorage.removeItem("guest_work_cache");
-            } catch (e) {
-              console.error("Failed to restore guest session", e);
-            }
-          }
-        } else {
-          setUser(null);
+          toast.success("Session restored", { description: "Your previous work is loaded." });
+          localStorage.removeItem("guest_work_cache");
+        } catch (e) {
+          console.error("Failed to restore guest session", e);
         }
-      } catch (err) {
-        console.error("Init Error:", err);
-      } finally {
-        setLoadingUser(false);
       }
-    };
-
-    initSession();
-  }, []);
+    }
+  }, [user, session]);
 
   // Fetch profile when user changes
   useEffect(() => {
@@ -133,7 +115,6 @@ const Dashboard = () => {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    setUser(null);
     handleReset();
     router.refresh();
   };
@@ -182,7 +163,7 @@ const Dashboard = () => {
 
   const handleConnectGoogleSheets = async () => {
     if (!user) return handleGuestAction();
-    
+
     if (isLimitReached) {
       toast.error("Limit Reached", { description: "Upgrade to export to Google Sheets." });
       return;
@@ -191,7 +172,7 @@ const Dashboard = () => {
     // Auth Check for Google
     if (!googleToken) {
       toast.info("Connecting...", { description: "Redirecting to Google authorization." });
-      
+
       const currentWork = { prompt, schema, excelUrl, fileSchema, readfile };
       localStorage.setItem("guest_work_cache", JSON.stringify(currentWork));
 
@@ -244,7 +225,7 @@ const Dashboard = () => {
 
   return (
     <div className="flex h-screen w-full flex-col bg-white text-slate-900 font-sans overflow-hidden">
-      
+
       {/* --- Navbar (Fixed Top) --- */}
       <header className="h-14 border-b border-gray-200 bg-white flex items-center justify-between px-4 lg:px-6 flex-none z-50 relative">
         <div className="flex items-center gap-4">
@@ -254,7 +235,7 @@ const Dashboard = () => {
             </div>
             <span className="font-bold text-lg tracking-tight text-slate-900">SpeakSheet</span>
           </Link>
-          
+
           {/* Status Pill */}
           <div className="hidden md:flex items-center gap-2 px-3 py-1 rounded-full bg-slate-50 border border-slate-200">
             <div className={cn("h-2 w-2 rounded-full", uploading ? "bg-amber-500 animate-pulse" : excelUrl ? "bg-emerald-500" : "bg-slate-300")} />
@@ -265,10 +246,10 @@ const Dashboard = () => {
         </div>
 
         <div className="flex items-center gap-4">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={handleReset} 
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleReset}
             className="text-slate-500 hover:text-slate-900 text-sm font-medium hidden sm:flex"
           >
             <RefreshCcw className="h-3.5 w-3.5 mr-2" /> Reset
@@ -279,16 +260,16 @@ const Dashboard = () => {
           {user ? (
             <div className="flex items-center gap-4">
               {!isPro && (
-                <Button 
-                  onClick={handleUpgrade} 
-                  size="sm" 
+                <Button
+                  onClick={handleUpgrade}
+                  size="sm"
                   className="bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs px-4 rounded-md shadow-sm transition-all"
                 >
                   <Crown className="h-3.5 w-3.5 mr-1.5" fill="currentColor" />
                   Upgrade
                 </Button>
               )}
-              
+
               <div className="hidden sm:flex flex-col items-end leading-none">
                 <span className="text-xs font-bold text-slate-900">
                   {isPro ? "Pro Plan" : "Free Plan"}
@@ -297,7 +278,7 @@ const Dashboard = () => {
                   {user.email}
                 </span>
               </div>
-              
+
               <Button variant="ghost" size="icon" onClick={handleLogout} className="text-slate-400 hover:text-slate-900">
                 <LogOut className="h-4 w-4" />
               </Button>
@@ -312,19 +293,19 @@ const Dashboard = () => {
 
       {/* --- Main Layout --- */}
       <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
-        
+
         {/* --- LEFT SIDEBAR (Input) --- */}
         <div className="w-full lg:w-[420px] flex-none border-b lg:border-b-0 lg:border-r border-gray-200 bg-white flex flex-col z-20 lg:h-full order-1">
-          
+
           {/* Usage Meter (Visible only if Logged In + Free) */}
           {user && !isPro && (
             <div className="px-6 py-3 bg-slate-50/80 border-b border-slate-100 flex justify-between items-center">
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Monthly Usage</span>
               <div className="flex items-center gap-2">
                 <div className="w-24 h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                  <div 
-                    className={cn("h-full rounded-full transition-all", isLimitReached ? "bg-red-500" : "bg-emerald-500")} 
-                    style={{ width: `${Math.min((downloadsUsed / MAX_DOWNLOADS) * 100, 100)}%` }} 
+                  <div
+                    className={cn("h-full rounded-full transition-all", isLimitReached ? "bg-red-500" : "bg-emerald-500")}
+                    style={{ width: `${Math.min((downloadsUsed / MAX_DOWNLOADS) * 100, 100)}%` }}
                   />
                 </div>
                 <span className={cn("text-xs font-medium", isLimitReached ? "text-red-600" : "text-slate-700")}>
@@ -372,7 +353,7 @@ const Dashboard = () => {
                   isPro={isPro}
                   downloadsUsed={downloadsUsed}
                 />
-                
+
                 <div className="mt-4">
                   <GenerateButton
                     prompt={prompt}
@@ -391,7 +372,7 @@ const Dashboard = () => {
               </div>
             </div>
           </div>
-          
+
           <div className="p-3 text-center border-t border-gray-100 bg-slate-50/50 hidden lg:block">
             <p className="text-[10px] text-slate-400">AI can make mistakes. Review generated data.</p>
           </div>
@@ -399,7 +380,7 @@ const Dashboard = () => {
 
         {/* --- RIGHT PANEL (Preview) --- */}
         <div className="flex-1 flex flex-col bg-gray-50 relative overflow-hidden order-2 min-h-[500px] lg:h-full border-t lg:border-t-0 border-gray-200">
-          
+
           {/* Preview Toolbar */}
           <div className="h-12 bg-white border-b border-gray-200 flex items-center justify-between px-4 lg:px-6 flex-none">
             <div className="flex items-center gap-2 text-slate-500">
@@ -444,45 +425,45 @@ const Dashboard = () => {
 
           {/* Main Preview Grid */}
           <div className="flex-1 overflow-auto p-4 lg:p-8 relative">
-             {schema ? (
-               <div className="bg-white border border-gray-300 shadow-sm min-h-[400px] relative rounded-sm overflow-hidden">
-                  {/* Excel Headers */}
-                  <div className="flex border-b border-gray-200 bg-gray-50 sticky top-0 z-10">
-                     <div className="w-10 border-r border-gray-200 bg-gray-50"></div>
-                     {['A','B','C','D','E'].map(col => (
-                       <div key={col} className="flex-1 h-7 flex items-center justify-center text-[11px] font-bold text-slate-500 border-r border-gray-200 last:border-r-0">
-                         {col}
-                       </div>
-                     ))}
-                  </div>
-                  <div className="flex">
-                    {/* Row Numbers */}
-                    <div className="w-10 flex-none border-r border-gray-200 bg-gray-50 flex flex-col sticky left-0 z-10">
-                      {[1,2,3,4,5,6,7,8,9,10,11,12].map(n => (
-                        <div key={n} className="h-9 flex items-center justify-center text-[10px] text-slate-400 border-b border-gray-100 bg-gray-50">
-                          {n}
-                        </div>
-                      ))}
+            {schema ? (
+              <div className="bg-white border border-gray-300 shadow-sm min-h-[400px] relative rounded-sm overflow-hidden">
+                {/* Excel Headers */}
+                <div className="flex border-b border-gray-200 bg-gray-50 sticky top-0 z-10">
+                  <div className="w-10 border-r border-gray-200 bg-gray-50"></div>
+                  {['A', 'B', 'C', 'D', 'E'].map(col => (
+                    <div key={col} className="flex-1 h-7 flex items-center justify-center text-[11px] font-bold text-slate-500 border-r border-gray-200 last:border-r-0">
+                      {col}
                     </div>
-                    {/* Actual Data Schema */}
-                    <div className="flex-1 p-0 overflow-x-auto bg-white">
-                      <SchemaPreview schema={schema} />
-                    </div>
+                  ))}
+                </div>
+                <div className="flex">
+                  {/* Row Numbers */}
+                  <div className="w-10 flex-none border-r border-gray-200 bg-gray-50 flex flex-col sticky left-0 z-10">
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(n => (
+                      <div key={n} className="h-9 flex items-center justify-center text-[10px] text-slate-400 border-b border-gray-100 bg-gray-50">
+                        {n}
+                      </div>
+                    ))}
                   </div>
-               </div>
-             ) : (
-               <EmptySpreadsheetState />
-             )}
+                  {/* Actual Data Schema */}
+                  <div className="flex-1 p-0 overflow-x-auto bg-white">
+                    <SchemaPreview schema={schema} />
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <EmptySpreadsheetState />
+            )}
           </div>
 
           {/* Bottom Tabs */}
           <div className="h-8 bg-gray-100 border-t border-gray-200 flex items-end px-2 gap-1 flex-none">
-             <div className="bg-white px-4 py-1 text-[11px] font-bold text-emerald-700 border-t border-x border-gray-300 shadow-[0_-1px_2px_rgba(0,0,0,0.05)] relative top-[1px]">
-               Sheet1
-             </div>
-             <div className="bg-transparent px-3 py-1 text-slate-400 hover:bg-gray-200 rounded-t cursor-pointer transition-colors">
-               <span className="text-xs font-bold">+</span>
-             </div>
+            <div className="bg-white px-4 py-1 text-[11px] font-bold text-emerald-700 border-t border-x border-gray-300 shadow-[0_-1px_2px_rgba(0,0,0,0.05)] relative top-[1px]">
+              Sheet1
+            </div>
+            <div className="bg-transparent px-3 py-1 text-slate-400 hover:bg-gray-200 rounded-t cursor-pointer transition-colors">
+              <span className="text-xs font-bold">+</span>
+            </div>
           </div>
         </div>
       </div>

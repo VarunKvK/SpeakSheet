@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useAuth } from "@/components/AuthProvider";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabaseClient"; 
+import { supabase } from "@/lib/supabaseClient";
 import { FileSpreadsheet, Loader2, Github } from "lucide-react";
 import { Button } from "@/components/ui/button"; // Using your shadcn button
 import { toast } from "sonner"; // Optional: for error messages
@@ -12,27 +13,15 @@ export default function Login() {
   const [checkingSession, setCheckingSession] = useState(true);
   const [loading, setLoading] = useState(false);
 
+  const { user, loading: authLoading } = useAuth();
+
   useEffect(() => {
-    // 1. Check Session
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        router.replace("/");
-      } else {
-        setCheckingSession(false);
-      }
-    };
-    checkSession();
-
-    // 2. Real-time Redirect
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if ( session) {
-        router.replace("/");
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [router]);
+    if (!authLoading && user) {
+      router.replace("/");
+    } else if (!authLoading) {
+      setCheckingSession(false);
+    }
+  }, [user, authLoading, router]);
 
   // --- CUSTOM GOOGLE LOGIN ---
   const handleGoogleLogin = async () => {
@@ -102,10 +91,10 @@ export default function Login() {
 
         {/* Auth Card - REPLACED <Auth /> WITH CUSTOM BUTTONS */}
         <div className="bg-white/80 backdrop-blur-sm border-2 border-emerald-100 dark:border-emerald-900/30 rounded-sm p-8 shadow-xl shadow-emerald-100/50 flex flex-col gap-4">
-          
+
           {/* Google Button */}
-          <Button 
-            onClick={handleGoogleLogin} 
+          <Button
+            onClick={handleGoogleLogin}
             disabled={loading}
             className="w-full bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 hover:text-slate-900 hover:border-slate-300 h-12 rounded-sm transition-all shadow-sm"
           >
@@ -130,9 +119,9 @@ export default function Login() {
           </div>
 
           {/* GitHub Button */}
-          <Button 
+          <Button
             onClick={handleGithubLogin}
-            disabled={loading} 
+            disabled={loading}
             className="w-full bg-[#24292F] text-white hover:bg-[#24292F]/90 h-12 rounded-sm"
           >
             <Github className="mr-2 h-5 w-5" />

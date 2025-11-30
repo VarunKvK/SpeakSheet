@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import {
   FileSpreadsheet,
@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabaseClient"; // Ensure this path matches your project
 import { toast } from "sonner";
+import { useAuth } from "@/components/AuthProvider";
 
 // --- Shared Design Elements ---
 
@@ -52,28 +53,13 @@ const ExcelCard = ({ children, className }) => (
 // --- Main Landing Page Component ---
 
 export default function LandingPage() {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const { user, loading } = useAuth();
 
-  // Auth Check Logic
-  useEffect(() => {
-    const checkUser = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        setUser(user);
-      } catch (error) {
-        console.error("Auth check failed:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    checkUser();
-  }, []);
+  // Auth Check Logic removed as it is handled by AuthProvider
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    setUser(null);
-    window.location.reload();
+    // User state will update automatically via AuthProvider
   };
 
   //LemonSqueezy

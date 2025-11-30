@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useAuth } from "@/components/AuthProvider";
 import { Check, ArrowRight, Loader2, FileSpreadsheet, User } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import Link from "next/link";
@@ -8,24 +9,11 @@ import { Button } from "@/components/ui/button";
 
 export default function PricingPage() {
     const [loading, setLoading] = useState(false);
-    const [user, setUser] = useState(null);
+    const { user, loading: authLoading } = useAuth();
 
-    useEffect(() => {
-        const checkUser = async () => {
-            try {
-                const { data: { user } } = await supabase.auth.getUser();
+    // Auth check logic is now handled by AuthProvider
 
-                setUser(user);
-            } catch (error) {
-                console.error("Auth check failed:", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-        checkUser();
-    }, []);
 
-    
     const handleUpgrade = () => {
         setLoading(true);
 
@@ -60,7 +48,7 @@ export default function PricingPage() {
                     </Link>
 
                     <div className="flex items-center gap-4">
-                        {loading ? (
+                        {authLoading ? (
                             <Loader2 className="h-4 w-4 animate-spin text-emerald-600" />
                         ) : user ? (
                             // --- STATE: LOGGED IN ---
